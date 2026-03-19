@@ -5,43 +5,29 @@ const express = require('express');
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // 🧿 START COMMAND
-bot.start((ctx) => {
-  ctx.reply(`
-🧿 Welcome to CosmicPot
-
-Send your DOB in format:
-DD-MM-YYYY
-
-Example: 27-10-1997
-  `);
-});
-
-// 🧿 HANDLE ALL TEXT
 bot.on('text', (ctx) => {
-  const text = ctx.message.text.trim();
+  const text = ctx.message.text.trim().toLowerCase();
 
-  // 🔮 GUIDE FLOW (FIRST PRIORITY)
-  if (text.toLowerCase() === "guide") {
+  // GUIDE FIRST
+  if (text === "guide") {
     return ctx.reply(`
 🔮 Cosmic Guidance Activated
 
 ✨ You are on a path shaped by your numbers.
 Trust your intuition and align your actions.
 
-📿 For full personal reading:
+💞 For full personal reading:
 👉 https://wa.me/91XXXXXXXXXX
     `);
   }
 
-  // ❌ INVALID FORMAT CHECK
+  // DOB CHECK
   if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
-    return ctx.reply("❌ Invalid format. Use DD-MM-YYYY");
+    return ctx.reply("❌ Send DOB in format: DD-MM-YYYY");
   }
 
-  // 🔢 CALCULATE NUMBERS
   const data = getFullNumerology(text);
 
-  // 🧿 RESPONSE
   ctx.reply(`
 🧿 Your Cosmic Profile
 
