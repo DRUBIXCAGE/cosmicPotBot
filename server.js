@@ -1,9 +1,22 @@
 const { Telegraf } = require('telegraf');
 const express = require('express');
 const { getFullNumerology } = require('./numberEngine');
-const numerologyData = require('./numerologyData.json');
+const data = require('./numerologyData.json');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
+
+// 🧿 MENU FUNCTION
+function showMenu(ctx) {
+  return ctx.reply("🧿 Choose your next step:", {
+    reply_markup: {
+      keyboard: [
+        ["🔢 Core Numbers", "🌌 Time Energy"],
+        ["🔮 Get Guidance", "💎 Premium Reading"]
+      ],
+      resize_keyboard: true
+    }
+  });
+}
 
 // 🧿 START
 bot.start((ctx) => {
@@ -12,43 +25,71 @@ bot.start((ctx) => {
 
 Send your DOB in format:
 DD-MM-YYYY
-
-Example: 27-10-1997
   `);
+
+  showMenu(ctx);
 });
 
-// 🧿 MAIN HANDLER
+// 🧿 BUTTON HANDLERS
+bot.hears("🔢 Core Numbers", (ctx) => {
+  ctx.reply("📩 Send your DOB to calculate your core numbers");
+});
+
+bot.hears("🌌 Time Energy", (ctx) => {
+  ctx.reply("📩 Send your DOB to check your current energy");
+});
+
+bot.hears("🔮 Get Guidance", (ctx) => {
+  ctx.reply(`
+🔮 Cosmic Guidance
+
+👉 https://wa.me/91XXXXXXXXXX
+  `);
+
+  showMenu(ctx);
+});
+
+bot.hears("💎 Premium Reading", (ctx) => {
+  ctx.reply(`
+💎 Premium Reading
+
+Unlock full life analysis + remedies
+
+👉 https://wa.me/91XXXXXXXXXX
+  `);
+
+  showMenu(ctx);
+});
+
+// 🧿 MAIN TEXT HANDLER
 bot.on('text', (ctx) => {
   const text = ctx.message.text.trim();
 
-  // 🔮 GUIDE
+  // GUIDE COMMAND
   if (text.toLowerCase() === "guide") {
-    return ctx.reply(`
+    ctx.reply(`
 🔮 Cosmic Guidance Activated
 
-✨ Your numbers show a deeper path waiting to unfold.
-Trust your intuition and act with clarity.
+✨ You are on a path shaped by your numbers.
+Trust your intuition and align your actions.
 
-💞 Get your FULL PERSONAL REPORT:
 👉 https://wa.me/91XXXXXXXXXX
-
-⚡ Limited personalized reading available
     `);
+
+    return showMenu(ctx);
   }
 
-  // ❌ INVALID FORMAT
+  // DOB VALIDATION
   if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
-    return ctx.reply("❌ Send DOB in format: DD-MM-YYYY");
+    ctx.reply("❌ Send DOB in format: DD-MM-YYYY");
+    return showMenu(ctx);
   }
 
-  // 🧠 CALCULATE
   const result = getFullNumerology(text);
 
-  // 📦 FETCH DATA
-  const birthData = numerologyData[result.birth] || {};
-  const destinyData = numerologyData[result.destiny] || {};
+  const birthData = data[result.birth] || {};
+  const destinyData = data[result.destiny] || {};
 
-  // 🧿 RESPONSE (COMBINED LOGIC)
   ctx.reply(`
 🧿 Your Cosmic Profile
 
@@ -62,15 +103,14 @@ ${birthData.traits || "N/A"}
 ${destinyData.traits || "N/A"}
 
 🧠 Combined Insight:
-You act as ${birthData.title || "a unique personality"} 
-while your life path leads you towards ${destinyData.title || "a higher purpose"}.
+You act as ${birthData.title || "your core self"}
+while your life path leads you towards ${destinyData.title || "growth"}.
 
 💪 Strength Blend:
 ${birthData.strengths || ""} + ${destinyData.strengths || ""}
 
 ⚠️ Challenge:
-Balance between ${birthData.weakness || ""} 
-and ${destinyData.weakness || ""}
+${birthData.weakness || ""} + ${destinyData.weakness || ""}
 
 📿 Remedies:
 ${destinyData.remedies ? destinyData.remedies.join(", ") : "N/A"}
@@ -81,18 +121,20 @@ ${destinyData.remedies ? destinyData.remedies.join(", ") : "N/A"}
 📆 Month: ${result.personalMonth}
 📍 Day: ${result.personalDay}
 
-✨ Type GUIDE for deeper insight
+✨ Tap "🔮 Get Guidance" for deeper insight
   `);
+
+  showMenu(ctx);
 });
 
-// 🚀 START BOT
+// 🧿 LAUNCH BOT
 bot.launch();
 
-// 🌐 KEEP RENDER ALIVE
+// 🧿 KEEP RENDER ALIVE
 const app = express();
 
 app.get('/', (req, res) => {
-  res.send('🧿 CosmicPot Bot is running');
+  res.send('CosmicPot Bot Running 🧿');
 });
 
 const PORT = process.env.PORT || 3000;
