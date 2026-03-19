@@ -1,0 +1,87 @@
+{
+  "1": {
+    "title": "The Leader",
+    "traits": "Independent, ambitious, confident",
+    "strengths": "Leadership, initiative, courage",
+    "weakness": "Ego, impatience, dominance",
+    "remedies": ["Wake early", "Sun meditation", "Practice humility"]
+  },
+  "2": {
+    "title": "The Peacemaker",
+    "traits": "Sensitive, cooperative, diplomatic",
+    "strengths": "Emotional intelligence, balance",
+    "weakness": "Overthinking, dependency",
+    "remedies": ["Moon meditation", "Avoid negativity", "Build confidence"]
+  },
+  "3": {
+    "title": "The Creator",
+    "traits": "Creative, expressive, joyful",
+    "strengths": "Communication, imagination",
+    "weakness": "Scattered focus, superficiality",
+    "remedies": ["Creative writing", "Art/music", "Stay disciplined"]
+  },
+  "4": {
+    "title": "The Builder",
+    "traits": "Practical, disciplined, grounded",
+    "strengths": "Hard work, structure, reliability",
+    "weakness": "Rigid thinking, stubbornness",
+    "remedies": ["Routine building", "Yoga", "Flexibility practice"]
+  },
+  "5": {
+    "title": "The Explorer",
+    "traits": "Adventurous, dynamic, freedom-loving",
+    "strengths": "Adaptability, communication",
+    "weakness": "Restlessness, inconsistency",
+    "remedies": ["Travel mindfully", "Meditation", "Focus training"]
+  },
+  "6": {
+    "title": "The Nurturer",
+    "traits": "Caring, responsible, loving",
+    "strengths": "Supportive nature, harmony",
+    "weakness": "Over-responsibility, control",
+    "remedies": ["Self-care", "Balance giving/receiving", "Gratitude practice"]
+  },
+  "7": {
+    "title": "The Seeker",
+    "traits": "Analytical, introspective, spiritual",
+    "strengths": "Wisdom, deep thinking",
+    "weakness": "Isolation, over-analysis",
+    "remedies": ["Meditation", "Nature time", "Journaling"]
+  },
+  "8": {
+    "title": "The Powerhouse",
+    "traits": "Ambitious, authoritative, goal-driven",
+    "strengths": "Financial success, leadership",
+    "weakness": "Material obsession, stress",
+    "remedies": ["Balance work/life", "Charity", "Grounding exercises"]
+  },
+  "9": {
+    "title": "The Humanitarian",
+    "traits": "Compassionate, wise, generous",
+    "strengths": "Empathy, global vision",
+    "weakness": "Emotional burden, detachment",
+    "remedies": ["Service", "Letting go", "Spiritual practice"]
+  },
+
+  "11": {
+    "title": "The Intuitive Master",
+    "traits": "Highly intuitive, visionary, sensitive",
+    "strengths": "Spiritual insight, inspiration",
+    "weakness": "Anxiety, emotional extremes",
+    "remedies": ["Meditation", "Grounding", "Energy protection"]
+  },
+  "22": {
+    "title": "The Master Builder",
+    "traits": "Practical visionary, disciplined",
+    "strengths": "Manifestation power, leadership",
+    "weakness": "Pressure, overwork",
+    "remedies": ["Structured planning", "Balance", "Mindfulness"]
+  },
+  "33": {
+    "title": "The Master Teacher",
+    "traits": "Compassionate, healer, selfless",
+    "strengths": "Guidance, service to others",
+    "weakness": "Self-sacrifice, emotional overload",
+    "remedies": ["Meditation", "Boundaries", "Service with balance"]
+  }
+}
