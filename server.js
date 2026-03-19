@@ -5,7 +5,7 @@ const numerologyData = require('./numerologyData.json');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// 🧿 START COMMAND
+// 🧿 START
 bot.start((ctx) => {
   ctx.reply(`
 🧿 Welcome to CosmicPot
@@ -21,16 +21,18 @@ Example: 27-10-1997
 bot.on('text', (ctx) => {
   const text = ctx.message.text.trim();
 
-  // 🔮 GUIDE COMMAND
+  // 🔮 GUIDE
   if (text.toLowerCase() === "guide") {
     return ctx.reply(`
 🔮 Cosmic Guidance Activated
 
-✨ Your journey is guided by unseen forces.
-Trust your intuition and align your actions.
+✨ Your numbers show a deeper path waiting to unfold.
+Trust your intuition and act with clarity.
 
-💞 For full personal reading:
+💞 Get your FULL PERSONAL REPORT:
 👉 https://wa.me/91XXXXXXXXXX
+
+⚡ Limited personalized reading available
     `);
   }
 
@@ -39,30 +41,36 @@ Trust your intuition and align your actions.
     return ctx.reply("❌ Send DOB in format: DD-MM-YYYY");
   }
 
-  // 🧠 GET NUMBERS
+  // 🧠 CALCULATE
   const result = getFullNumerology(text);
 
   // 📦 FETCH DATA
-  const destinyData = numerologyData[result.destiny] || {};
   const birthData = numerologyData[result.birth] || {};
+  const destinyData = numerologyData[result.destiny] || {};
 
-  // 🧿 RESPONSE
+  // 🧿 RESPONSE (COMBINED LOGIC)
   ctx.reply(`
 🧿 Your Cosmic Profile
 
 🔢 Birth Number: ${result.birth}
 🌌 Destiny Number: ${result.destiny}
 
-✨ ${destinyData.title || ""}
+✨ Personality (Birth Energy):
+${birthData.traits || "N/A"}
 
-🧠 Traits:
+✨ Life Path (Destiny Energy):
 ${destinyData.traits || "N/A"}
 
-💪 Strengths:
-${destinyData.strengths || "N/A"}
+🧠 Combined Insight:
+You act as ${birthData.title || "a unique personality"} 
+while your life path leads you towards ${destinyData.title || "a higher purpose"}.
 
-⚠️ Weakness:
-${destinyData.weakness || "N/A"}
+💪 Strength Blend:
+${birthData.strengths || ""} + ${destinyData.strengths || ""}
+
+⚠️ Challenge:
+Balance between ${birthData.weakness || ""} 
+and ${destinyData.weakness || ""}
 
 📿 Remedies:
 ${destinyData.remedies ? destinyData.remedies.join(", ") : "N/A"}
@@ -80,7 +88,7 @@ ${destinyData.remedies ? destinyData.remedies.join(", ") : "N/A"}
 // 🚀 START BOT
 bot.launch();
 
-// 🌐 KEEP SERVER ALIVE (Render Fix)
+// 🌐 KEEP RENDER ALIVE
 const app = express();
 
 app.get('/', (req, res) => {
