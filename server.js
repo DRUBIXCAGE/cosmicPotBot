@@ -1,9 +1,10 @@
 const { Telegraf } = require('telegraf');
 const { getFullNumerology } = require('./numberEngine');
+const express = require('express');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// START
+// 🧿 START COMMAND
 bot.start((ctx) => {
   ctx.reply(`
 🧿 Welcome to CosmicPot
@@ -15,16 +16,32 @@ Example: 27-10-1997
   `);
 });
 
-// HANDLE INPUT
+// 🧿 HANDLE ALL TEXT
 bot.on('text', (ctx) => {
-  const dob = ctx.message.text;
+  const text = ctx.message.text.trim();
 
-  if (!dob.match(/^\d{2}-\d{2}-\d{4}$/)) {
+  // 🔮 GUIDE FLOW (FIRST PRIORITY)
+  if (text.toLowerCase() === "guide") {
+    return ctx.reply(`
+🔮 Cosmic Guidance Activated
+
+✨ You are on a path shaped by your numbers.
+Trust your intuition and align your actions.
+
+📿 For full personal reading:
+👉 https://wa.me/91XXXXXXXXXX
+    `);
+  }
+
+  // ❌ INVALID FORMAT CHECK
+  if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
     return ctx.reply("❌ Invalid format. Use DD-MM-YYYY");
   }
 
-  const data = getFullNumerology(dob);
+  // 🔢 CALCULATE NUMBERS
+  const data = getFullNumerology(text);
 
+  // 🧿 RESPONSE
   ctx.reply(`
 🧿 Your Cosmic Profile
 
@@ -41,20 +58,10 @@ bot.on('text', (ctx) => {
   `);
 });
 
-// GUIDE FLOW
-bot.hears(/guide/i, (ctx) => {
-  ctx.reply(`
-🔮 Deeper guidance unlocked
-
-📿 For full reading:
-👉 https://wa.me/91XXXXXXXXXX
-  `);
-});
-
-// START BOT
+// 🚀 START BOT
 bot.launch();
-// 🧿 KEEP RENDER HAPPY (FAKE SERVER)
-const express = require('express');
+
+// 🧿 KEEP RENDER ALIVE (IMPORTANT)
 const app = express();
 
 app.get('/', (req, res) => {
@@ -62,6 +69,7 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
