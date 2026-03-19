@@ -31,5 +31,66 @@
       "Practice discipline",
       "Avoid distractions"
     ]
+  },
+  "4": {
+    "title": "Builder Energy",
+    "traits": "Practical, disciplined, stable",
+    "strengths": "Hard work, structure",
+    "weakness": "Rigid thinking",
+    "remedies": [
+      "Stay flexible",
+      "Avoid overwork",
+      "Balance routine"
+    ]
+  },
+  "5": {
+    "title": "Freedom Energy",
+    "traits": "Adventurous, dynamic, curious",
+    "strengths": "Adaptability, communication",
+    "weakness": "Restlessness",
+    "remedies": [
+      "Practice grounding",
+      "Avoid impulsive decisions"
+    ]
+  },
+  "6": {
+    "title": "Nurturer Energy",
+    "traits": "Caring, responsible, loving",
+    "strengths": "Support, harmony",
+    "weakness": "Over-sacrifice",
+    "remedies": [
+      "Set boundaries",
+      "Self-care first"
+    ]
+  },
+  "7": {
+    "title": "Spiritual Energy",
+    "traits": "Analytical, introspective, wise",
+    "strengths": "Deep thinking",
+    "weakness": "Isolation",
+    "remedies": [
+      "Meditation",
+      "Connect with nature"
+    ]
+  },
+  "8": {
+    "title": "Power Energy",
+    "traits": "Ambitious, authoritative, focused",
+    "strengths": "Money, leadership",
+    "weakness": "Control issues",
+    "remedies": [
+      "Balance power with empathy",
+      "Avoid greed"
+    ]
+  },
+  "9": {
+    "title": "Humanitarian Energy",
+    "traits": "Compassionate, generous, wise",
+    "strengths": "Service, leadership",
+    "weakness": "Emotional burden",
+    "remedies": [
+      "Let go of past",
+      "Help without attachment"
+    ]
   }
 }
