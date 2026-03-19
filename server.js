@@ -1,122 +1,90 @@
 const { Telegraf } = require('telegraf');
 const express = require('express');
 const { getFullNumerology } = require('./numberEngine');
-const dataSet = require('./data.json');
+const numerologyData = require('./numerologyData.json');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// 🔗 UPDATE THESE LINKS
-const WHATSAPP_LINK = "https://wa.me/91XXXXXXXXXX";
-const TELEGRAM_LINK = "https://t.me/yourusername";
-
-// 🧿 START MENU
+// 🧿 START COMMAND
 bot.start((ctx) => {
-  ctx.reply("🧿 Welcome to CosmicPot\n\nChoose your path:", {
-    reply_markup: {
-      keyboard: [
-        ["🔢 Core Numbers", "🌌 Time Energy"],
-        ["🔮 Get Guidance", "💎 Premium Reading"]
-      ],
-      resize_keyboard: true
-    }
-  });
-});
-
-// 🧿 BUTTONS
-bot.hears("🔢 Core Numbers", (ctx) => {
-  ctx.reply("📅 Send your DOB (DD-MM-YYYY) to unlock your numbers 🔢");
-});
-
-bot.hears("🌌 Time Energy", (ctx) => {
-  ctx.reply("⏳ Send your DOB to see current time energies");
-});
-
-bot.hears("🔮 Get Guidance", (ctx) => {
   ctx.reply(`
-🔮 Cosmic Guidance
+🧿 Welcome to CosmicPot
 
-✨ Your path is shaped by deeper forces.
-Align your actions with your inner voice.
+Send your DOB in format:
+DD-MM-YYYY
 
-👇 Choose how you want deeper reading:
-
-📲 WhatsApp: ${WHATSAPP_LINK}
-💬 Telegram: ${TELEGRAM_LINK}
+Example: 27-10-1997
   `);
 });
 
-bot.hears("💎 Premium Reading", (ctx) => {
-  ctx.reply(`
-💎 Full Reading Available
-
-💖 Love | 💼 Career | 💰 Money | 📿 Remedies
-
-👇 Connect now:
-
-📲 WhatsApp: ${WHATSAPP_LINK}
-💬 Telegram: ${TELEGRAM_LINK}
-  `);
-});
-
-// 🧿 MAIN LOGIC
+// 🧿 MAIN HANDLER
 bot.on('text', (ctx) => {
-  const text = ctx.message.text.trim().toLowerCase();
+  const text = ctx.message.text.trim();
 
-  // GUIDE
-  if (text === "guide") {
+  // 🔮 GUIDE COMMAND
+  if (text.toLowerCase() === "guide") {
     return ctx.reply(`
 🔮 Cosmic Guidance Activated
 
-✨ You are on a path shaped by your numbers.
+✨ Your journey is guided by unseen forces.
 Trust your intuition and align your actions.
 
-👇 Get personal reading:
-
-📲 WhatsApp: ${WHATSAPP_LINK}
-💬 Telegram: ${TELEGRAM_LINK}
+💞 For full personal reading:
+👉 https://wa.me/91XXXXXXXXXX
     `);
   }
 
-  // DOB VALIDATION
+  // ❌ INVALID FORMAT
   if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
     return ctx.reply("❌ Send DOB in format: DD-MM-YYYY");
   }
 
+  // 🧠 GET NUMBERS
   const result = getFullNumerology(text);
-  const destinyData = dataSet[result.destiny];
 
+  // 📦 FETCH DATA
+  const destinyData = numerologyData[result.destiny] || {};
+  const birthData = numerologyData[result.birth] || {};
+
+  // 🧿 RESPONSE
   ctx.reply(`
 🧿 Your Cosmic Profile
 
-🔢 Birth: ${result.birth}
-🌌 Destiny: ${result.destiny}
+🔢 Birth Number: ${result.birth}
+🌌 Destiny Number: ${result.destiny}
 
-✨ ${destinyData?.title || ""}
+✨ ${destinyData.title || ""}
 
 🧠 Traits:
-${destinyData?.traits || "N/A"}
+${destinyData.traits || "N/A"}
 
 💪 Strengths:
-${destinyData?.strengths || "N/A"}
+${destinyData.strengths || "N/A"}
 
 ⚠️ Weakness:
-${destinyData?.weakness || "N/A"}
+${destinyData.weakness || "N/A"}
 
 📿 Remedies:
-${destinyData?.remedies?.join("\n") || "N/A"}
+${destinyData.remedies ? destinyData.remedies.join(", ") : "N/A"}
+
+⏳ Personal Energy
+
+📅 Year: ${result.personalYear}
+📆 Month: ${result.personalMonth}
+📍 Day: ${result.personalDay}
 
 ✨ Type GUIDE for deeper insight
   `);
 });
 
-// 🧿 START BOT
+// 🚀 START BOT
 bot.launch();
 
-// 🧿 KEEP RENDER ALIVE
+// 🌐 KEEP SERVER ALIVE (Render Fix)
 const app = express();
 
 app.get('/', (req, res) => {
-  res.send('CosmicPot Bot is running 🧿');
+  res.send('🧿 CosmicPot Bot is running');
 });
 
 const PORT = process.env.PORT || 3000;
