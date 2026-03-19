@@ -20,19 +20,33 @@ function showMenu(ctx) {
 
 // START
 bot.start((ctx) => {
-  ctx.reply("🧿 Welcome to CosmicPot\nSend DOB: DD-MM-YYYY");
+  ctx.reply(`🧿 Welcome to CosmicPot
+
+Send your DOB in format:
+DD-MM-YYYY`);
   showMenu(ctx);
 });
 
 // BUTTONS
-bot.hears("🔢 Core Numbers", (ctx) => ctx.reply("Send DOB"));
-bot.hears("🌌 Time Energy", (ctx) => ctx.reply("Send DOB"));
+bot.hears("🔢 Core Numbers", (ctx) => {
+  ctx.reply("📩 Send your DOB (DD-MM-YYYY)");
+});
+
+bot.hears("🌌 Time Energy", (ctx) => {
+  ctx.reply("📩 Send your DOB to check your energy");
+});
+
 bot.hears("🔮 Get Guidance", (ctx) => {
-  ctx.reply("👉 https://wa.me/91XXXXXXXXXX");
+  ctx.reply(`🔮 Cosmic Guidance
+
+👉 https://wa.me/91XXXXXXXXXX`);
   showMenu(ctx);
 });
+
 bot.hears("💎 Premium Reading", (ctx) => {
-  ctx.reply("👉 https://wa.me/91XXXXXXXXXX");
+  ctx.reply(`💎 Premium Reading
+
+👉 https://wa.me/91XXXXXXXXXX`);
   showMenu(ctx);
 });
 
@@ -41,45 +55,104 @@ bot.on('text', (ctx) => {
   const text = ctx.message.text.trim();
 
   if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
-    ctx.reply("❌ Send DOB in DD-MM-YYYY");
+    ctx.reply("❌ Send DOB in format: DD-MM-YYYY");
     return showMenu(ctx);
   }
 
-  const r = getFullNumerology(text);
-  const d = data[r.destiny] || {};
+  const result = getFullNumerology(text);
+
+  const birthData = data[result.birth] || {};
+  const destinyData = data[result.destiny] || {};
 
   ctx.reply(`
-🧿 Cosmic Profile
+🧿 Cosmic Profile Revealed
 
-🔢 Birth: ${r.birth}
-🌌 Destiny: ${r.destiny}
+🔢 Birth Number: ${result.birth}
+🌌 Destiny Number: ${result.destiny}
 
-🪐 Planet: ${d.planet}
-🎨 Lucky Colors: ${d.luckyColors?.join(", ")}
-⚠️ Avoid: ${d.avoidColors?.join(", ")}
+━━━━━━━━━━━━━━━
 
-🖼️ Wallpaper: ${d.wallpaper}
+✨ Your Core Personality
 
-🤝 Friends: ${d.friends}
-⚔️ Foes: ${d.foes}
+You carry the vibration of *${birthData.title}*.  
+This makes you naturally ${birthData.traits}.
 
-⚡ Actions: ${d.luckyActions?.join(", ")}
+In real life:
+• ${birthData.strengths}
 
-📿 Remedies: ${d.remedies?.join(", ")}
+⚠️ Challenge:
+${birthData.weakness}
 
-⏳ Energy:
-Year: ${r.personalYear}
-Month: ${r.personalMonth}
-Day: ${r.personalDay}
+---
+
+🌌 Your Life Path
+
+You are evolving into:
+👉 ${destinyData.title}
+
+Your journey pushes you toward:
+• ${destinyData.traits}
+
+---
+
+🧠 Combined Insight
+
+You act like ${birthData.title}  
+But life is shaping you into ${destinyData.title}
+
+---
+
+🪐 Alignment
+
+Planet: ${birthData.planet}  
+Lucky Color: ${birthData.colors}  
+Avoid: ${birthData.avoid}
+
+---
+
+🤝 Compatibility
+
+Friends: ${birthData.friends}  
+Foes: ${birthData.foes}
+
+---
+
+⚡ Action
+
+${birthData.action}
+
+📿 Remedy:
+${destinyData.remedies?.join(", ")}
+
+---
+
+⏳ Energy
+
+Year: ${result.personalYear}  
+Month: ${result.personalMonth}  
+Day: ${result.personalDay}
+
+---
+
+💎 Full Reading:
+https://wa.me/91XXXXXXXXXX
+
+━━━━━━━━━━━━━━━
+✨ Tap "🔮 Get Guidance"
   `);
 
   showMenu(ctx);
 });
 
-// RUN
+// LAUNCH
 bot.launch();
 
 // KEEP ALIVE
 const app = express();
-app.get('/', (req, res) => res.send("Running"));
-app.listen(process.env.PORT || 3000);
+
+app.get('/', (req, res) => {
+  res.send('CosmicPot Running');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT);
