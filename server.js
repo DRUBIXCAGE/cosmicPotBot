@@ -1,10 +1,11 @@
 const { Telegraf } = require('telegraf');
 const express = require('express');
 const { getFullNumerology } = require('./numberEngine');
+const dataSet = require('./data.json');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// 🧿 START MENU WITH BUTTONS
+// 🧿 START MENU
 bot.start((ctx) => {
   ctx.reply("🧿 Welcome to CosmicPot\n\nChoose your path:", {
     reply_markup: {
@@ -17,7 +18,7 @@ bot.start((ctx) => {
   });
 });
 
-// 🧿 BUTTON HANDLERS
+// 🧿 BUTTONS
 bot.hears("🔢 Core Numbers", (ctx) => {
   ctx.reply("📅 Send your DOB (DD-MM-YYYY) to unlock your numbers 🔢");
 });
@@ -47,11 +48,11 @@ bot.hears("💎 Premium Reading", (ctx) => {
   `);
 });
 
-// 🧿 MAIN TEXT HANDLER (NO CONFLICT)
+// 🧿 MAIN LOGIC
 bot.on('text', (ctx) => {
   const text = ctx.message.text.trim().toLowerCase();
 
-  // 🔮 GUIDE HANDLER
+  // GUIDE
   if (text === "guide") {
     return ctx.reply(`
 🔮 Cosmic Guidance Activated
@@ -64,25 +65,33 @@ Trust your intuition and align your actions.
     `);
   }
 
-  // ❌ INVALID FORMAT
+  // DOB VALIDATION
   if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
     return ctx.reply("❌ Send DOB in format: DD-MM-YYYY");
   }
 
-  // 🔢 CALCULATE NUMBERS
-  const data = getFullNumerology(text);
+  const result = getFullNumerology(text);
+  const destinyData = dataSet[result.destiny];
 
   ctx.reply(`
 🧿 Your Cosmic Profile
 
-🔢 Birth: ${data.birth}
-🌌 Destiny: ${data.destiny}
-🧠 Attitude: ${data.attitude}
-🔮 Maturity: ${data.maturity}
+🔢 Birth: ${result.birth}
+🌌 Destiny: ${result.destiny}
 
-⏳ Year: ${data.personalYear}
-📅 Month: ${data.personalMonth}
-📆 Day: ${data.personalDay}
+✨ ${destinyData?.title || ""}
+
+🧠 Traits:
+${destinyData?.traits || "N/A"}
+
+💪 Strengths:
+${destinyData?.strengths || "N/A"}
+
+⚠️ Weakness:
+${destinyData?.weakness || "N/A"}
+
+📿 Remedies:
+${destinyData?.remedies?.join("\n") || "N/A"}
 
 ✨ Type GUIDE for deeper insight
   `);
@@ -91,7 +100,7 @@ Trust your intuition and align your actions.
 // 🧿 START BOT
 bot.launch();
 
-// 🧿 KEEP RENDER ALIVE (PORT FIX)
+// 🧿 KEEP RENDER ALIVE
 const app = express();
 
 app.get('/', (req, res) => {
