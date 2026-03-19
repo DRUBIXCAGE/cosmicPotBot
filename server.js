@@ -5,12 +5,35 @@ const data = require('./numerologyData.json');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// 🧠 MEMORY
+let userData = {};
+let userMode = {};
+let loveMode = {};
+
+// 🧿 NORMALIZE DOB
+function normalizeDOB(input) {
+  const cleaned = input.replace(/[\/\s]/g, "-");
+  const parts = cleaned.split("-");
+  if (parts.length !== 3) return null;
+
+  let [d, m, y] = parts;
+
+  if (y.length === 2) y = "19" + y;
+  if (d.length === 1) d = "0" + d;
+  if (m.length === 1) m = "0" + m;
+
+  const final = `${d}-${m}-${y}`;
+  if (!final.match(/^\d{2}-\d{2}-\d{4}$/)) return null;
+
+  return final;
+}
+
 // 🧿 MENU
 function showMenu(ctx) {
   return ctx.reply("🧿 Choose your next step:", {
     reply_markup: {
       keyboard: [
-        ["🔢 Core Numbers", "💘 Love Match"],
+        ["🔢 Core Energy", "💘 Love Match"],
         ["🌌 Time Energy", "🔮 Get Guidance"],
         ["💎 Premium Reading"]
       ],
@@ -21,28 +44,30 @@ function showMenu(ctx) {
 
 // 🧿 START
 bot.start((ctx) => {
-  ctx.reply(`🧿 Welcome to CosmicPot
-
-Send your DOB in format:
-DD-MM-YYYY`);
+  ctx.reply("🧿 Welcome to CosmicPot\nSend your DOB (DD-MM-YYYY)");
   showMenu(ctx);
 });
 
 // 🧿 BUTTONS
-bot.hears("🔢 Core Numbers", (ctx) => {
-  ctx.reply("📩 Send your DOB (DD-MM-YYYY)");
-});
+function handleDOBPrompt(ctx, mode) {
+  userMode[ctx.chat.id] = mode;
+  const user = userData[ctx.chat.id];
 
-bot.hears("🌌 Time Energy", (ctx) => {
-  ctx.reply("📩 Send your DOB to check your energy");
-});
+  if (user?.dob) {
+    return ctx.reply(`
+📌 Your saved DOB: ${user.dob}
 
-bot.hears("🔮 Get Guidance", (ctx) => {
-  ctx.reply(`🔮 Cosmic Guidance
+1️⃣ Use this DOB  
+2️⃣ Enter new DOB
+`);
+  }
 
-👉 https://wa.me/917895424239`);
-  showMenu(ctx);
-});
+  ctx.reply("📩 Send your DOB");
+}
+
+bot.hears("🔢 Core Energy", (ctx) => handleDOBPrompt(ctx, "core"));
+bot.hears("🌌 Time Energy", (ctx) => handleDOBPrompt(ctx, "time"));
+bot.hears("🔮 Get Guidance", (ctx) => handleDOBPrompt(ctx, "guide"));
 
 bot.hears("💎 Premium Reading", (ctx) => {
   ctx.reply(`💎 Premium Reading
@@ -51,36 +76,42 @@ bot.hears("💎 Premium Reading", (ctx) => {
   showMenu(ctx);
 });
 
-// 🧿 LOVE MATCH MODE
-let loveMode = {};
-
+// 💘 LOVE MATCH
 bot.hears("💘 Love Match", (ctx) => {
   loveMode[ctx.chat.id] = true;
-  ctx.reply("💘 Send your DOB (DD-MM-YYYY)");
+  ctx.reply("💘 Send your DOB");
 });
 
 // 🧿 MAIN HANDLER
 bot.on('text', (ctx) => {
-  const text = ctx.message.text.trim();
+  let text = ctx.message.text.trim();
 
-  // 💘 LOVE MATCH FLOW (STEP 1)
-  if (loveMode[ctx.chat.id] === true) {
-    if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
-      return ctx.reply("❌ Send DOB in DD-MM-YYYY");
-    }
-
-    loveMode[ctx.chat.id] = text;
-    return ctx.reply("💘 Now send your partner's DOB");
+  // USE SAVED DOB
+  if (text === "1") {
+    const user = userData[ctx.chat.id];
+    if (!user?.dob) return ctx.reply("❌ No saved DOB");
+    text = user.dob;
   }
 
-  // 💘 LOVE MATCH FLOW (STEP 2)
+  if (text === "2") {
+    return ctx.reply("📩 Send new DOB");
+  }
+
+  // 💘 LOVE MATCH STEP 1
+  if (loveMode[ctx.chat.id] === true) {
+    const dob = normalizeDOB(text);
+    if (!dob) return ctx.reply("❌ Invalid DOB");
+
+    loveMode[ctx.chat.id] = dob;
+    return ctx.reply("💘 Now send partner DOB");
+  }
+
+  // 💘 LOVE MATCH STEP 2
   if (typeof loveMode[ctx.chat.id] === "string") {
-    if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
-      return ctx.reply("❌ Send DOB in DD-MM-YYYY");
-    }
+    const dob2 = normalizeDOB(text);
+    if (!dob2) return ctx.reply("❌ Invalid DOB");
 
     const dob1 = loveMode[ctx.chat.id];
-    const dob2 = text;
     delete loveMode[ctx.chat.id];
 
     const r1 = getFullNumerology(dob1);
@@ -89,172 +120,91 @@ bot.on('text', (ctx) => {
     const score = (r1.destiny + r2.destiny) % 9 || 9;
 
     ctx.reply(`
-💘 Love Compatibility Result
+💘 Love Compatibility
 
-🔢 You: ${r1.destiny}
-🔢 Partner: ${r2.destiny}
+You: ${r1.destiny}
+Partner: ${r2.destiny}
 
-✨ Score: ${score}/9
+Score: ${score}/9
 
 ${
   score >= 7
-    ? "🔥 Strong emotional and spiritual bond"
+    ? "🔥 Strong bond"
     : score >= 4
-    ? "⚖️ Balanced but requires effort"
-    : "⚡ Challenging connection with karmic lessons"
+    ? "⚖️ Balanced"
+    : "⚡ Challenging"
 }
 
-🔮 This connection has deeper hidden layers...
-
-👉 Full compatibility reading:
-https://wa.me/917895424239
+👉 https://wa.me/917895424239
 `);
 
-    showMenu(ctx);
-    return;
-  }
-
-  // 🧿 DOB VALIDATION
-  if (!text.match(/^\d{2}-\d{2}-\d{4}$/)) {
-    ctx.reply("❌ Send DOB in format: DD-MM-YYYY");
     return showMenu(ctx);
   }
 
-  const result = getFullNumerology(text);
+  // 🧿 NORMAL DOB FLOW
+  const dob = normalizeDOB(text);
+  if (!dob) {
+    ctx.reply("❌ Send DOB like 27-10-1997");
+    return showMenu(ctx);
+  }
+
+  // SAVE DOB
+  userData[ctx.chat.id] = {
+    ...userData[ctx.chat.id],
+    dob
+  };
+
+  const mode = userMode[ctx.chat.id] || "core";
+  const result = getFullNumerology(dob);
   const d = data[result.birth] || {};
 
-  // 🧿 MAIN RESPONSE
-  ctx.reply(`
-🧿 Numerology Report
+  // 🔢 CORE
+  if (mode === "core") {
+    ctx.reply(`
+🔢 Core Energy
 
-🔢 Number: ${result.birth} (Moolank ${result.birth})
-🪐 Ruling Planet: ${d.planet}
+Birth: ${result.birth}
+Destiny: ${result.destiny}
 
-📅 Birth Dates: ${d.dates}
-
-━━━━━━━━━━━━━━━
-
-✨ Personal Characteristics
-
-🔹 Nature:
-${d.nature}
-
-🔹 Personality:
-${d.personality}
-
-🔹 Core Qualities:
-${d.qualities}
-
-🌟 Famous Personalities:
-${d.famous}
-
-━━━━━━━━━━━━━━━
-
-💼 Professional & Health Profile
-
-💼 Career:
-${d.career}
-
-🎨 Lucky Colors:
-${d.colors}
-
-🔢 Lucky Numbers:
-${d.luckyNumbers}
-
-⚕️ Health:
-${d.health}
-
-📆 Significant Years:
-${d.years}
-
-━━━━━━━━━━━━━━━
-
-❤️ Relationships
-
-🤝 Compatible Numbers:
-${d.compatible}
-
-⚠️ Challenges:
-${d.relationshipIssues}
-
-━━━━━━━━━━━━━━━
-
-📿 Remedies (Upay)
-
-🌅 Daily Ritual:
-${d.dailyRitual}
-
-🧘 Manifestation:
-${d.manifestation}
-
-✋ Mudra:
-${d.mudra}
-
-🗓️ Practice:
-${d.specialPractice}
-
-⚙️ Lifestyle:
-${d.lifestyle}
-
-📌 Priority Dates:
-${d.priorityDates}
-
-🖼️ Wallpapers:
-${d.wallpapers}
-
-━━━━━━━━━━━━━━━
-
-🌺 Navratri Remedies
-
-${d.navratri}
-
-━━━━━━━━━━━━━━━
-
-🔮 Insight
-
-This number is ruled by ${d.planet}.  
-Your life revolves around ${d.coreTheme}.
-
-⚠️ Important:
-
-Your numbers show deeper patterns affecting:
-• Career  
-• Relationships  
-• Financial flow  
-
----
-
-💎 Full Personal Reading:
-
-📲 Telegram:
-https://t.me/drubixCage
-
-💬 WhatsApp:
-https://wa.me/917895424239
-
-━━━━━━━━━━━━━━━
-✨ Tap "🔮 Get Guidance"
+You are ${d.title}
+Traits: ${d.traits}
 `);
+    return showMenu(ctx);
+  }
 
-  // 📤 SHARE LOOP
-  ctx.reply(`
-📤 Share with friends:
+  // 🌌 TIME
+  if (mode === "time") {
+    ctx.reply(`
+🌌 Time Energy
 
-https://t.me/drubixCage
+Year: ${result.personalYear}
+Month: ${result.personalMonth}
+Day: ${result.personalDay}
 `);
+    return showMenu(ctx);
+  }
 
-  showMenu(ctx);
+  // 🔮 GUIDE
+  if (mode === "guide") {
+    ctx.reply(`
+🔮 Guidance
+
+Planet: ${d.planet}
+
+Focus: ${d.action}
+
+Remedy: ${d.remedies?.join(", ")}
+
+👉 https://wa.me/917895424239
+`);
+    return showMenu(ctx);
+  }
 });
 
 // 🧿 START BOT
 bot.launch();
 
-// 🧿 KEEP ALIVE FOR RENDER
+// 🧿 KEEP ALIVE
 const app = express();
-
-app.get('/', (req, res) => {
-  res.send('CosmicPot Running 🧿');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT);
+app.get('/', (req, res) => res.send('Running'));
+app.listen(process.env.PORT || 3000);
