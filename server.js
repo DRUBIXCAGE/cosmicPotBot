@@ -5,6 +5,10 @@ const dataSet = require('./data.json');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// 🔗 UPDATE THESE LINKS
+const WHATSAPP_LINK = "https://wa.me/91XXXXXXXXXX";
+const TELEGRAM_LINK = "https://t.me/yourusername";
+
 // 🧿 START MENU
 bot.start((ctx) => {
   ctx.reply("🧿 Welcome to CosmicPot\n\nChoose your path:", {
@@ -34,17 +38,23 @@ bot.hears("🔮 Get Guidance", (ctx) => {
 ✨ Your path is shaped by deeper forces.
 Align your actions with your inner voice.
 
-👉 Type GUIDE or send DOB
+👇 Choose how you want deeper reading:
+
+📲 WhatsApp: ${WHATSAPP_LINK}
+💬 Telegram: ${TELEGRAM_LINK}
   `);
 });
 
 bot.hears("💎 Premium Reading", (ctx) => {
   ctx.reply(`
-💎 Unlock Full Reading
+💎 Full Reading Available
 
 💖 Love | 💼 Career | 💰 Money | 📿 Remedies
 
-👉 https://wa.me/91XXXXXXXXXX
+👇 Connect now:
+
+📲 WhatsApp: ${WHATSAPP_LINK}
+💬 Telegram: ${TELEGRAM_LINK}
   `);
 });
 
@@ -60,8 +70,10 @@ bot.on('text', (ctx) => {
 ✨ You are on a path shaped by your numbers.
 Trust your intuition and align your actions.
 
-💞 For full personal reading:
-👉 https://wa.me/91XXXXXXXXXX
+👇 Get personal reading:
+
+📲 WhatsApp: ${WHATSAPP_LINK}
+💬 Telegram: ${TELEGRAM_LINK}
     `);
   }
 
