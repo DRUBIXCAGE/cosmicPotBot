@@ -1,0 +1,35 @@
+{
+  "1": {
+    "title": "Leader Energy",
+    "traits": "Independent, ambitious, strong will",
+    "strengths": "Leadership, confidence, decision making",
+    "weakness": "Ego, impatience",
+    "remedies": [
+      "Wake before sunrise",
+      "Offer water to Sun",
+      "Practice humility"
+    ]
+  },
+  "2": {
+    "title": "Emotional Energy",
+    "traits": "Sensitive, intuitive, cooperative",
+    "strengths": "Empathy, diplomacy",
+    "weakness": "Overthinking, mood swings",
+    "remedies": [
+      "Meditation",
+      "Stay near water",
+      "Avoid negativity"
+    ]
+  },
+  "3": {
+    "title": "Creative Energy",
+    "traits": "Creative, expressive, joyful",
+    "strengths": "Communication, imagination",
+    "weakness": "Scattered focus",
+    "remedies": [
+      "Focus on one goal",
+      "Practice discipline",
+      "Avoid distractions"
+    ]
+  }
+}
