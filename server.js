@@ -48,7 +48,7 @@ bot.start((ctx) => {
   showMenu(ctx);
 });
 
-// 🧿 BUTTONS
+// 🧿 BUTTON HANDLER
 function handleDOBPrompt(ctx, mode) {
   userMode[ctx.chat.id] = mode;
   const user = userData[ctx.chat.id];
@@ -70,9 +70,18 @@ bot.hears("🌌 Time Energy", (ctx) => handleDOBPrompt(ctx, "time"));
 bot.hears("🔮 Get Guidance", (ctx) => handleDOBPrompt(ctx, "guide"));
 
 bot.hears("💎 Premium Reading", (ctx) => {
-  ctx.reply(`💎 Premium Reading
+  ctx.reply(`
+💎 Premium Reading Unlock
 
-👉 https://wa.me/917895424239`);
+Your deeper patterns reveal:
+
+• Money cycles 💰  
+• Relationship karma ❤️  
+• Life turning points 🔮  
+
+👉 WhatsApp: https://wa.me/917895424239  
+👉 Telegram: https://t.me/drubixCage
+`);
   showMenu(ctx);
 });
 
@@ -122,20 +131,21 @@ bot.on('text', (ctx) => {
     ctx.reply(`
 💘 Love Compatibility
 
-You: ${r1.destiny}
-Partner: ${r2.destiny}
+You: ${r1.destiny}  
+Partner: ${r2.destiny}  
 
-Score: ${score}/9
+Score: ${score}/9  
 
 ${
   score >= 7
     ? "🔥 Strong bond"
     : score >= 4
-    ? "⚖️ Balanced"
-    : "⚡ Challenging"
+    ? "⚖️ Balanced connection"
+    : "⚡ Challenging dynamic"
 }
 
-👉 https://wa.me/917895424239
+👉 Unlock deeper relationship insights:
+https://wa.me/917895424239
 `);
 
     return showMenu(ctx);
@@ -156,46 +166,95 @@ ${
 
   const mode = userMode[ctx.chat.id] || "core";
   const result = getFullNumerology(dob);
-  const d = data[result.birth] || {};
 
-  // 🔢 CORE
+  const birthData = data[result.birth] || {};
+  const destinyData = data[result.destiny] || {};
+
+  // 🔢 CORE ENERGY (EMOTIONAL VERSION)
   if (mode === "core") {
     ctx.reply(`
-🔢 Core Energy
+🔢 Core Energy Reading
 
-Birth: ${result.birth}
-Destiny: ${result.destiny}
+Birth Number: ${result.birth}  
+Destiny Number: ${result.destiny}  
 
-You are ${d.title}
-Traits: ${d.traits}
+✨ Personality:
+${birthData.personality}
+
+---
+
+🌌 Life Path:
+${destinyData.lifePath}
+
+---
+
+🧠 Hidden Pattern:
+${birthData.hidden}
+
+---
+
+💪 Strength:
+${birthData.strength}
+
+---
+
+⚠️ Challenge:
+${birthData.challenge}
+
+---
+
+🧿 Guidance:
+${destinyData.guidance}
+
+---
+
+💎 Something deeper is hidden…
+
+👉 WhatsApp: https://wa.me/917895424239  
+👉 Telegram: https://t.me/drubixCage
 `);
     return showMenu(ctx);
   }
 
-  // 🌌 TIME
+  // 🌌 TIME ENERGY
   if (mode === "time") {
     ctx.reply(`
 🌌 Time Energy
 
-Year: ${result.personalYear}
-Month: ${result.personalMonth}
-Day: ${result.personalDay}
+Year: ${result.personalYear}  
+Month: ${result.personalMonth}  
+Day: ${result.personalDay}  
+
+👉 These cycles influence your current decisions and emotions.
+
+👉 Want exact predictions?
+https://wa.me/917895424239
 `);
     return showMenu(ctx);
   }
 
-  // 🔮 GUIDE
+  // 🔮 GUIDANCE
   if (mode === "guide") {
     ctx.reply(`
-🔮 Guidance
+🔮 Cosmic Guidance
 
-Planet: ${d.planet}
+Your current energy is asking you to slow down and realign.
 
-Focus: ${d.action}
+👉 Focus:
+${destinyData.guidance}
 
-Remedy: ${d.remedies?.join(", ")}
+👉 Action:
+Avoid overthinking. Trust your instincts.
 
-👉 https://wa.me/917895424239
+👉 Remedy:
+${(birthData.remedy || []).join(", ")}
+
+---
+
+💎 Deeper patterns are hidden in your chart...
+
+👉 WhatsApp: https://wa.me/917895424239  
+👉 Telegram: https://t.me/drubixCage
 `);
     return showMenu(ctx);
   }
@@ -204,7 +263,7 @@ Remedy: ${d.remedies?.join(", ")}
 // 🧿 START BOT
 bot.launch();
 
-// 🧿 KEEP ALIVE
+// 🧿 KEEP ALIVE (Render)
 const app = express();
-app.get('/', (req, res) => res.send('Running'));
+app.get('/', (req, res) => res.send('CosmicPot Running'));
 app.listen(process.env.PORT || 3000);
