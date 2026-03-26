@@ -1,36 +1,50 @@
-const { Telegraf } = require('telegraf');
-const express = require('express');
-const { getFullNumerology } = require('./numberEngine');
-const data = require('./numerologyData.json');
+const express = require("express");
+const bodyParser = require("body-parser");
+const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const TOKEN = process.env.TELEGRAM_TOKEN;
+const bot = new TelegramBot(TOKEN, { polling: true });
 
-// 🧠 MEMORY
-let userData = {};
-let userMode = {};
-let loveMode = {};
+const data = JSON.parse(fs.readFileSync("./data.json", "utf-8"));
 
-// 🧿 NORMALIZE DOB
-function normalizeDOB(input) {
-  const cleaned = input.replace(/[\/\s]/g, "-");
-  const parts = cleaned.split("-");
-  if (parts.length !== 3) return null;
+const userState = {};
+const userData = {};
 
-  let [d, m, y] = parts;
-
-  if (y.length === 2) y = "19" + y;
-  if (d.length === 1) d = "0" + d;
-  if (m.length === 1) m = "0" + m;
-
-  const final = `${d}-${m}-${y}`;
-  if (!final.match(/^\d{2}-\d{2}-\d{4}$/)) return null;
-
-  return final;
+// 🔢 Calculate numbers
+function reduceNumber(num) {
+  while (num > 9 && num !== 11 && num !== 22 && num !== 33) {
+    num = num.toString().split("").reduce((a, b) => a + +b, 0);
+  }
+  return num;
 }
 
-// 🧿 MENU
-function showMenu(ctx) {
-  return ctx.reply("🧿 Choose your next step:", {
+function calculateNumbers(dob) {
+  const digits = dob.replace(/\D/g, "");
+
+  const birth = reduceNumber(parseInt(digits[0] + digits[1]));
+  const destiny = reduceNumber(
+    digits.split("").reduce((a, b) => a + +b, 0)
+  );
+
+  return { birth, destiny };
+}
+
+// 📅 Flexible DOB parser
+function parseDOB(input) {
+  const clean = input.replace(/[^\d]/g, "");
+  if (clean.length !== 8) return null;
+
+  const day = clean.substring(0, 2);
+  const month = clean.substring(2, 4);
+  const year = clean.substring(4, 8);
+
+  return `${day}-${month}-${year}`;
+}
+
+// 💬 Main Menu
+function sendMenu(chatId) {
+  bot.sendMessage(chatId, "🧿 Choose your next step:", {
     reply_markup: {
       keyboard: [
         ["🔢 Core Energy", "💘 Love Match"],
@@ -42,228 +56,225 @@ function showMenu(ctx) {
   });
 }
 
-// 🧿 START
-bot.start((ctx) => {
-  ctx.reply("🧿 Welcome to CosmicPot\nSend your DOB (DD-MM-YYYY)");
-  showMenu(ctx);
-});
+// 🌟 Core Energy Response (EMOTIONAL + PERSONAL)
+function generateCoreMessage(birth, destiny) {
+  const b = data[birth];
+  const d = data[destiny];
 
-// 🧿 BUTTON HANDLER
-function handleDOBPrompt(ctx, mode) {
-  userMode[ctx.chat.id] = mode;
-  const user = userData[ctx.chat.id];
+  return `🧿 *Your Cosmic Blueprint*
 
-  if (user?.dob) {
-    return ctx.reply(`
-📌 Your saved DOB: ${user.dob}
+I looked into your numbers… and this is what they quietly reveal about you:
 
-1️⃣ Use this DOB  
-2️⃣ Enter new DOB
-`);
-  }
+🔢 *Birth Number: ${birth}*
+🌌 *Destiny Number: ${destiny}*
 
-  ctx.reply("📩 Send your DOB");
+✨ *Your Nature*  
+You are someone who is ${b.nature.toLowerCase()}.  
+Not everyone understands this about you… but it defines how you move through life.
+
+🧠 *Your Personality*  
+You naturally come across as ${b.personality.toLowerCase()}.  
+People often see your strength… but not always the depth behind it.
+
+🌠 *Your Life Path*  
+Your journey is guided by ${d.coreTheme.toLowerCase()}.  
+This is not random… this is what your life keeps pulling you toward.
+
+💪 *Your Strength*  
+You carry ${b.qualities.toLowerCase()} within you.  
+This is your natural power… use it consciously.
+
+⚠️ *Your Inner Challenge*  
+At times, you may face ${b.relationshipIssues.toLowerCase()}.  
+This is where your growth is hidden.
+
+💫 *A Small Guidance for You*  
+Start doing this regularly: *${b.dailyRitual}*  
+It may look simple… but it aligns your energy deeply.
+
+🎯 *Your Natural Alignment*  
+Your energy resonates with numbers: *${b.luckyNumbers}*  
+And colors like *${b.colors}* amplify your presence.
+
+🧿 *One Truth About You*  
+You are not here randomly…  
+your life is quietly shaped around *${b.coreTheme.toLowerCase()}*
+
+—
+
+If this felt accurate… it’s because this is just the surface.
+
+👉 For deeper personal reading:  
+https://wa.me/917895424239  
+📩 Telegram: https://t.me/drubixCage
+`;
 }
 
-bot.hears("🔢 Core Energy", (ctx) => handleDOBPrompt(ctx, "core"));
-bot.hears("🌌 Time Energy", (ctx) => handleDOBPrompt(ctx, "time"));
-bot.hears("🔮 Get Guidance", (ctx) => handleDOBPrompt(ctx, "guide"));
+// 🚀 START
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
 
-bot.hears("💎 Premium Reading", (ctx) => {
-  ctx.reply(`
-💎 Premium Reading Unlock
+  bot.sendMessage(
+    chatId,
+    `🧿 Welcome to CosmicPot
 
-Your deeper patterns reveal:
+Before we begin… tell me your Date of Birth.
 
-• Money cycles 💰  
-• Relationship karma ❤️  
-• Life turning points 🔮  
+You can type it in any format:
+27-10-1997 / 27/10/1997 / 27101997
 
-👉 WhatsApp: https://wa.me/917895424239  
-👉 Telegram: https://t.me/drubixCage
-`);
-  showMenu(ctx);
+I’ll understand.`
+  );
+
+  userState[chatId] = "WAITING_DOB";
 });
 
-// 💘 LOVE MATCH
-bot.hears("💘 Love Match", (ctx) => {
-  loveMode[ctx.chat.id] = true;
-  ctx.reply("💘 Send your DOB");
-});
+// 📩 MESSAGE HANDLER
+bot.on("message", (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
 
-// 🧿 MAIN HANDLER
-bot.on('text', (ctx) => {
-  let text = ctx.message.text.trim();
+  if (!text) return;
 
-  // USE SAVED DOB
-  if (text === "1") {
-    const user = userData[ctx.chat.id];
-    if (!user?.dob) return ctx.reply("❌ No saved DOB");
-    text = user.dob;
+  // 👉 If waiting DOB
+  if (userState[chatId] === "WAITING_DOB") {
+    const dob = parseDOB(text);
+
+    if (!dob) {
+      return bot.sendMessage(
+        chatId,
+        "❌ That doesn’t look right.\nTry like: 27-10-1997"
+      );
+    }
+
+    userData[chatId] = { dob };
+    userState[chatId] = null;
+
+    bot.sendMessage(chatId, `📌 Got it… *${dob}*\n\nLet me read this… 🧿`, {
+      parse_mode: "Markdown"
+    });
+
+    const { birth, destiny } = calculateNumbers(dob);
+
+    const message = generateCoreMessage(birth, destiny);
+
+    bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
+
+    return sendMenu(chatId);
   }
 
-  if (text === "2") {
-    return ctx.reply("📩 Send new DOB");
+  // 👉 Core Energy
+  if (text.includes("Core Energy")) {
+    if (!userData[chatId]) {
+      userState[chatId] = "WAITING_DOB";
+      return bot.sendMessage(chatId, "📩 First, send your DOB");
+    }
+
+    const { birth, destiny } = calculateNumbers(userData[chatId].dob);
+    const message = generateCoreMessage(birth, destiny);
+
+    bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
+    return sendMenu(chatId);
   }
 
-  // 💘 LOVE MATCH STEP 1
-  if (loveMode[ctx.chat.id] === true) {
-    const dob = normalizeDOB(text);
-    if (!dob) return ctx.reply("❌ Invalid DOB");
-
-    loveMode[ctx.chat.id] = dob;
-    return ctx.reply("💘 Now send partner DOB");
+  // 👉 Love Match
+  if (text.includes("Love Match")) {
+    userState[chatId] = "LOVE_DOB";
+    return bot.sendMessage(chatId, "💘 Send your DOB first");
   }
 
-  // 💘 LOVE MATCH STEP 2
-  if (typeof loveMode[ctx.chat.id] === "string") {
-    const dob2 = normalizeDOB(text);
-    if (!dob2) return ctx.reply("❌ Invalid DOB");
+  if (userState[chatId] === "LOVE_DOB") {
+    const dob = parseDOB(text);
+    if (!dob) return bot.sendMessage(chatId, "❌ Invalid DOB");
 
-    const dob1 = loveMode[ctx.chat.id];
-    delete loveMode[ctx.chat.id];
+    userData[chatId].love1 = dob;
+    userState[chatId] = "LOVE_DOB_2";
 
-    const r1 = getFullNumerology(dob1);
-    const r2 = getFullNumerology(dob2);
-
-    const score = (r1.destiny + r2.destiny) % 9 || 9;
-
-    ctx.reply(`
-💘 Love Compatibility
-
-You: ${r1.destiny}  
-Partner: ${r2.destiny}  
-
-Score: ${score}/9  
-
-${
-  score >= 7
-    ? "🔥 Strong bond"
-    : score >= 4
-    ? "⚖️ Balanced connection"
-    : "⚡ Challenging dynamic"
-}
-
-👉 Unlock deeper relationship insights:
-https://wa.me/917895424239
-`);
-
-    return showMenu(ctx);
+    return bot.sendMessage(chatId, "💘 Now send partner DOB");
   }
 
-  // 🧿 NORMAL DOB FLOW
-  const dob = normalizeDOB(text);
-  if (!dob) {
-    ctx.reply("❌ Send DOB like 27-10-1997");
-    return showMenu(ctx);
+  if (userState[chatId] === "LOVE_DOB_2") {
+    const dob2 = parseDOB(text);
+    if (!dob2) return bot.sendMessage(chatId, "❌ Invalid DOB");
+
+    const { birth: b1 } = calculateNumbers(userData[chatId].love1);
+    const { birth: b2 } = calculateNumbers(dob2);
+
+    const score = Math.abs(b1 - b2);
+
+    bot.sendMessage(
+      chatId,
+      `💘 *Love Insight*
+
+You: ${b1}  
+Partner: ${b2}
+
+⚡ Energy Gap: ${score}
+
+This connection feels ${
+        score <= 2 ? "naturally aligned 💫" : "intense & karmic 🔥"
+      }
+
+👉 Want deeper relationship decoding?  
+https://wa.me/917895424239`,
+      { parse_mode: "Markdown" }
+    );
+
+    userState[chatId] = null;
+    return sendMenu(chatId);
   }
 
-  // SAVE DOB
-  userData[ctx.chat.id] = {
-    ...userData[ctx.chat.id],
-    dob
-  };
+  // 👉 Guidance
+  if (text.includes("Guidance")) {
+    bot.sendMessage(
+      chatId,
+      `🔮 *Personal Guidance*
 
-  const mode = userMode[ctx.chat.id] || "core";
-  const result = getFullNumerology(dob);
+Right now… your energy is asking for clarity.
 
-  const birthData = data[result.birth] || {};
-  const destinyData = data[result.destiny] || {};
+Slow down. Observe. Don’t react instantly.
 
-  // 🔢 CORE ENERGY (EMOTIONAL VERSION)
-  if (mode === "core") {
-    ctx.reply(`
-🔢 Core Energy Reading
+Your next breakthrough will come from *awareness*, not action.
 
-Birth Number: ${result.birth}  
-Destiny Number: ${result.destiny}  
+👉 For deeper personal guidance:  
+https://wa.me/917895424239  
+📩 Telegram: https://t.me/drubixCage`,
+      { parse_mode: "Markdown" }
+    );
 
-✨ Personality:
-${birthData.personality}
-
----
-
-🌌 Life Path:
-${destinyData.lifePath}
-
----
-
-🧠 Hidden Pattern:
-${birthData.hidden}
-
----
-
-💪 Strength:
-${birthData.strength}
-
----
-
-⚠️ Challenge:
-${birthData.challenge}
-
----
-
-🧿 Guidance:
-${destinyData.guidance}
-
----
-
-💎 Something deeper is hidden…
-
-👉 WhatsApp: https://wa.me/917895424239  
-👉 Telegram: https://t.me/drubixCage
-`);
-    return showMenu(ctx);
+    return sendMenu(chatId);
   }
 
-  // 🌌 TIME ENERGY
-  if (mode === "time") {
-    ctx.reply(`
-🌌 Time Energy
+  // 👉 Premium
+  if (text.includes("Premium")) {
+    bot.sendMessage(
+      chatId,
+      `💎 *Premium Reading*
 
-Year: ${result.personalYear}  
-Month: ${result.personalMonth}  
-Day: ${result.personalDay}  
+This is where we go deeper:
 
-👉 These cycles influence your current decisions and emotions.
+✔ Detailed life prediction  
+✔ Career & money timing  
+✔ Relationship patterns  
+✔ Personal remedies  
 
-👉 Want exact predictions?
-https://wa.me/917895424239
-`);
-    return showMenu(ctx);
-  }
+👉 Start here:  
+https://wa.me/917895424239`,
+      { parse_mode: "Markdown" }
+    );
 
-  // 🔮 GUIDANCE
-  if (mode === "guide") {
-    ctx.reply(`
-🔮 Cosmic Guidance
-
-Your current energy is asking you to slow down and realign.
-
-👉 Focus:
-${destinyData.guidance}
-
-👉 Action:
-Avoid overthinking. Trust your instincts.
-
-👉 Remedy:
-${(birthData.remedy || []).join(", ")}
-
----
-
-💎 Deeper patterns are hidden in your chart...
-
-👉 WhatsApp: https://wa.me/917895424239  
-👉 Telegram: https://t.me/drubixCage
-`);
-    return showMenu(ctx);
+    return sendMenu(chatId);
   }
 });
 
-// 🧿 START BOT
-bot.launch();
-
-// 🧿 KEEP ALIVE (Render)
+// 🌐 SERVER
 const app = express();
-app.get('/', (req, res) => res.send('CosmicPot Running'));
-app.listen(process.env.PORT || 3000);
+app.use(bodyParser.json());
+
+app.get("/", (req, res) => {
+  res.send("Bot is running...");
+});
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Server running...");
+});
