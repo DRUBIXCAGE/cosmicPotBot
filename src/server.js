@@ -1,51 +1,22 @@
-const express = require("express");
-const TelegramBot = require("node-telegram-bot-api");
-const fs = require("fs");
-const path = require("path");
-const { getFullNumerology } = require("./numberEngine");
+const TelegramBot = require('node-telegram-bot-api');
+const fs = require('fs');
+const path = require('path');
 
-const app = express();
-app.use(express.json());
+const { getFullNumerology } = require('./numberEngine');
 
-const TOKEN = process.env.BOT_TOKEN;
+// ✅ Load data correctly from src folder
+const numerologyData = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'numerologyData.json'), 'utf-8')
+);
 
-if (!TOKEN) {
-  console.error("BOT_TOKEN missing");
-  process.exit(1);
-}
+// ✅ BOT TOKEN
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+// ✅ In-memory user state
+const userState = {};
 
-// LOAD DATA
-let numerologyData = {};
-try {
-  const filePath = path.join(__dirname, "numerologyData.json");
-  numerologyData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-} catch (err) {
-  console.error("Error loading numerologyData.json", err);
-  process.exit(1);
-}
-
-// USER MEMORY
-const users = {};
-
-// FLEX DOB PARSER
-function parseDOB(input) {
-  const clean = input.replace(/[\/.\s]/g, "-");
-  const parts = clean.split("-").map(Number);
-
-  if (parts.length !== 3) return null;
-
-  let [d, m, y] = parts;
-  if (!d || !m || !y) return null;
-
-  if (y < 100) y += 1900;
-
-  return `${String(d).padStart(2, "0")}-${String(m).padStart(2, "0")}-${y}`;
-}
-
-// MENU
-function menu(chatId) {
+// ✅ MENU
+function sendMenu(chatId) {
   bot.sendMessage(chatId, "✨ What do you want to explore next?", {
     reply_markup: {
       keyboard: [
@@ -58,233 +29,213 @@ function menu(chatId) {
   });
 }
 
-// START
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
+// ✅ FORMAT RESPONSE (EMOTIONAL + DEEP)
+function generateCoreReading(dob, result) {
+  const birthData = numerologyData[result.birth] || {};
+  const destinyData = numerologyData[result.destiny] || {};
 
-  bot.sendMessage(
-    chatId,
+  return `🔮 *Your Cosmic Blueprint is unfolding...*
+
+You were not born randomly.
+
+Your date *${dob}* carries a pattern...  
+and that pattern is speaking.
+
+━━━━━━━━━━━━━━━
+
+✨ *Your Birth Energy (${result.birth})*  
+${birthData.title || "Unknown Energy"}
+
+You naturally carry traits like:  
+${birthData.traits || "..."}
+
+But what makes you powerful is:  
+${birthData.strengths || "..."}
+
+⚠️ Deep inside, your challenge has always been:  
+${birthData.weakness || "..."}
+
+━━━━━━━━━━━━━━━
+
+🌌 *Your Destiny Path (${result.destiny})*  
+${destinyData.title || "Unknown Path"}
+
+This is not who you are…  
+this is who you are becoming.
+
+You are meant to grow into:  
+${destinyData.traits || "..."}
+
+And life keeps pushing you toward:  
+${destinyData.strengths || "..."}
+
+━━━━━━━━━━━━━━━
+
+🧿 *Hidden Truth About You*
+
+There are moments in your life where you feel:  
+"Why do I feel different from others?"
+
+That’s not confusion.  
+That’s alignment trying to happen.
+
+━━━━━━━━━━━━━━━
+
+⚡ *What You Should Do Right Now*
+
+${(birthData.remedies || []).join('\n')}
+
+━━━━━━━━━━━━━━━
+
+If this felt *a little too accurate...*
+
+👉 WhatsApp: https://wa.me/917895424239  
+👉 Telegram: https://t.me/drubixCage
+
+Some answers require going deeper than numbers.`;
+}
+
+// ✅ MESSAGE HANDLER
+bot.on('message', (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text?.trim();
+
+  if (!text) return;
+
+  // =========================
+  // START
+  // =========================
+  if (text === '/start') {
+    bot.sendMessage(chatId,
 `🔮 Welcome to CosmicPot
 
-Some people come here out of curiosity…
+Some people come here casually...
 
-But some arrive because something inside them
-is quietly asking for answers.
+But some arrive because something inside them  
+has been quietly asking questions.
 
 If you're here, you're probably the second one.
 
 📩 Send your Date of Birth  
-(DD-MM-YYYY)
+(DD-MM-YYYY or DD/MM/YYYY)`
+    );
+    return;
+  }
 
-Example: 27-10-1997`
-  );
+  // =========================
+  // HANDLE OPTION 1 / 2
+  // =========================
+  if (text === "1" && userState[chatId]?.dob) {
+    const dob = userState[chatId].dob;
+    const result = getFullNumerology(dob);
 
-  menu(chatId);
-});
+    bot.sendMessage(chatId, generateCoreReading(dob, result), {
+      parse_mode: "Markdown"
+    });
 
-// MAIN HANDLER
-bot.on("message", (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
+    sendMenu(chatId);
+    return;
+  }
 
-  if (!text || text.startsWith("/")) return;
+  if (text === "2") {
+    delete userState[chatId];
+    bot.sendMessage(chatId, "📅 Send your new DOB");
+    return;
+  }
 
-  // MENU BUTTONS
-  if (
-    text === "🔢 Core Energy" ||
-    text === "🌌 Time Energy" ||
-    text === "🔮 Get Guidance"
-  ) {
-    if (users[chatId]?.dob) {
-      bot.sendMessage(
-        chatId,
-`📌 I remember your DOB: ${users[chatId].dob}
+  // =========================
+  // HANDLE DOB INPUT (ALL FORMATS)
+  // =========================
+  const dobMatch = text.match(/^(\d{1,2})[-\/ ](\d{1,2})[-\/ ](\d{2,4})$/);
 
-Do you want me to go deeper with this  
+  if (dobMatch) {
+    let [_, d, m, y] = dobMatch;
+
+    if (y.length === 2) y = "19" + y;
+
+    const dob = `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+
+    userState[chatId] = { dob };
+
+    bot.sendMessage(chatId,
+`📌 I remember your DOB: *${dob}*
+
+Do you want to go deeper with this  
 or explore something new?
 
 1️⃣ Use this DOB  
-2️⃣ Enter new DOB`
-      );
-      users[chatId].pending = text;
-      return;
-    } else {
+2️⃣ Enter new DOB`,
+      { parse_mode: "Markdown" }
+    );
+
+    return;
+  }
+
+  // =========================
+  // CORE ENERGY
+  // =========================
+  if (text.includes("Core Energy")) {
+    if (!userState[chatId]?.dob) {
       bot.sendMessage(chatId, "📩 Send your DOB first");
-      users[chatId] = { pending: text };
       return;
     }
+
+    const dob = userState[chatId].dob;
+    const result = getFullNumerology(dob);
+
+    bot.sendMessage(chatId, generateCoreReading(dob, result), {
+      parse_mode: "Markdown"
+    });
+
+    sendMenu(chatId);
+    return;
   }
 
+  // =========================
   // LOVE MATCH
-  if (text === "💞 Love Match") {
-    bot.sendMessage(chatId,
-`💞 Love is never random…
-
-Send your DOB first`);
-    users[chatId] = { step: "love1" };
+  // =========================
+  if (text.includes("Love")) {
+    userState[chatId].loveMode = true;
+    bot.sendMessage(chatId, "💞 Send your DOB first");
     return;
   }
 
-  if (users[chatId]?.step === "love1") {
-    const dob = parseDOB(text);
-    if (!dob) {
-      bot.sendMessage(chatId, "❌ Send DOB properly");
+  // =========================
+  // TIME ENERGY
+  // =========================
+  if (text.includes("Time")) {
+    if (!userState[chatId]?.dob) {
+      bot.sendMessage(chatId, "📩 Send your DOB first");
       return;
     }
 
-    users[chatId].dob1 = dob;
-    users[chatId].step = "love2";
+    const result = getFullNumerology(userState[chatId].dob);
 
     bot.sendMessage(chatId,
-`Now send their DOB…
+`🌌 Your current time energy:
 
-Let’s see what energy connects you both`);
-    return;
-  }
+Year: ${result.personalYear}  
+Month: ${result.personalMonth}  
+Day: ${result.personalDay}
 
-  if (users[chatId]?.step === "love2") {
-    const dob = parseDOB(text);
-    if (!dob) {
-      bot.sendMessage(chatId, "❌ Send DOB properly");
-      return;
-    }
-
-    const n1 = getFullNumerology(users[chatId].dob1);
-    const n2 = getFullNumerology(dob);
-
-    const score =
-      Math.abs(n1.birth - n2.birth) <= 2 ? "🔥 Deep pull" : "⚡ Karmic friction";
-
-    bot.sendMessage(
-      chatId,
-`💞 Love Compatibility
-
-You: ${n1.birth}
-Partner: ${n2.birth}
-
-Result: ${score}
-
-This connection isn't random.
-
-It either teaches…  
-or transforms.
-
-👉 Want to know *why* this bond exists?
-
-📲 WhatsApp:
-https://wa.me/917895424239
-
-📩 Telegram:
-https://t.me/dRubixCage`
+You're in a cycle that's shaping your next move.`
     );
 
-    users[chatId] = {};
-    menu(chatId);
+    sendMenu(chatId);
     return;
   }
 
-  // PREMIUM
-  if (text === "💎 Premium Reading") {
-    bot.sendMessage(
-      chatId,
-`💎 What you’ve seen so far…
+  // =========================
+  // GUIDANCE
+  // =========================
+  if (text.includes("Guidance")) {
+    bot.sendMessage(chatId,
+`🔮 Sometimes one insight can change everything.
 
-is barely 20% of your pattern.
-
-The rest?
-
-Hidden in layers you don’t consciously notice.
-
-👉 Full decoding here:
-
-📲 WhatsApp:
-https://wa.me/917895424239
-
-📩 Telegram:
-https://t.me/dRubixCage`
+👉 WhatsApp: https://wa.me/917895424239  
+👉 Telegram: https://t.me/drubixCage`
     );
-    menu(chatId);
     return;
   }
 
-  // DOB INPUT
-  const dob = parseDOB(text);
-
-  if (!dob) {
-    if (text !== "1" && text !== "2") {
-      bot.sendMessage(chatId, "❌ Send DOB like 27-10-1997");
-    }
-    return;
-  }
-
-  users[chatId] = { dob };
-
-  const num = getFullNumerology(dob);
-  const data = numerologyData[num.birth];
-
-  if (!data) {
-    bot.sendMessage(chatId, "❌ Missing data");
-    return;
-  }
-
-  // CORE RESPONSE (EMOTIONAL ENGINE)
-  const message = `
-🔮 Your Cosmic Blueprint
-
-Birth Number: ${num.birth}  
-Destiny Number: ${num.destiny}
-
----
-
-✨ ${data.title}
-
-🧠 The way you think:
-${data.traits}
-
-💪 What naturally works in your favor:
-${data.strengths}
-
-⚠️ The silent pattern you struggle with:
-${data.weakness}
-
-🧿 What balances your energy:
-${data.remedies.join(", ")}
-
----
-
-If you're honest with yourself…
-
-you’ve felt this pattern before, haven’t you?
-
-Moments where things repeat…  
-reactions you can't fully explain…
-
-That’s not coincidence.
-
-That’s your number playing out.
-
-👉 Want to break the pattern  
-instead of repeating it?
-
-📲 WhatsApp:
-https://wa.me/917895424239
-
-📩 Telegram:
-https://t.me/dRubixCage
-`;
-
-  bot.sendMessage(chatId, message);
-
-  menu(chatId);
-});
-
-// SERVER
-app.get("/", (req, res) => {
-  res.send("Bot running");
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
 });
