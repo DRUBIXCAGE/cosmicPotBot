@@ -6,23 +6,26 @@ const fs = require("fs");
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-const data = JSON.parse(fs.readFileSync("./data.json", "utf-8"));
+// ✅ FIXED FILE NAME
+const data = JSON.parse(fs.readFileSync("./numerologyData.json", "utf-8"));
 
 const userState = {};
 const userData = {};
 
-// 🔢 Calculate numbers
+// 🔢 NUMBER REDUCTION
 function reduceNumber(num) {
-  while (num > 9 && num !== 11 && num !== 22 && num !== 33) {
+  while (num > 9 && ![11, 22, 33].includes(num)) {
     num = num.toString().split("").reduce((a, b) => a + +b, 0);
   }
   return num;
 }
 
+// 🔢 CALCULATION
 function calculateNumbers(dob) {
   const digits = dob.replace(/\D/g, "");
 
-  const birth = reduceNumber(parseInt(digits[0] + digits[1]));
+  const birth = reduceNumber(parseInt(digits.slice(0, 2)));
+
   const destiny = reduceNumber(
     digits.split("").reduce((a, b) => a + +b, 0)
   );
@@ -30,7 +33,7 @@ function calculateNumbers(dob) {
   return { birth, destiny };
 }
 
-// 📅 Flexible DOB parser
+// 📅 DOB PARSER
 function parseDOB(input) {
   const clean = input.replace(/[^\d]/g, "");
   if (clean.length !== 8) return null;
@@ -42,7 +45,7 @@ function parseDOB(input) {
   return `${day}-${month}-${year}`;
 }
 
-// 💬 Main Menu
+// 💬 MENU
 function sendMenu(chatId) {
   bot.sendMessage(chatId, "🧿 Choose your next step:", {
     reply_markup: {
@@ -56,56 +59,55 @@ function sendMenu(chatId) {
   });
 }
 
-// 🌟 Core Energy Response (EMOTIONAL + PERSONAL)
+// 🌟 CORE MESSAGE (FIXED SAFE)
 function generateCoreMessage(birth, destiny) {
-  const b = data[birth];
-  const d = data[destiny];
+  const b = data[String(birth)] || {};
+  const d = data[String(destiny)] || {};
+
+  const ritual = Array.isArray(b.dailyRitual)
+    ? b.dailyRitual.join(", ")
+    : b.dailyRitual || "Follow a consistent daily routine";
 
   return `🧿 *Your Cosmic Blueprint*
 
-I looked into your numbers… and this is what they quietly reveal about you:
+I looked into your numbers… and something about you stood out.
 
-🔢 *Birth Number: ${birth}*
-🌌 *Destiny Number: ${destiny}*
+🔢 *Birth Number:* ${birth}  
+🌌 *Destiny Number:* ${destiny}
 
 ✨ *Your Nature*  
-You are someone who is ${b.nature.toLowerCase()}.  
-Not everyone understands this about you… but it defines how you move through life.
+You are someone who is ${b.nature || "unique in your own way"}.
 
-🧠 *Your Personality*  
-You naturally come across as ${b.personality.toLowerCase()}.  
-People often see your strength… but not always the depth behind it.
+🧠 *How People See You*  
+You come across as ${b.personality || "strong and thoughtful"}.
 
-🌠 *Your Life Path*  
-Your journey is guided by ${d.coreTheme.toLowerCase()}.  
-This is not random… this is what your life keeps pulling you toward.
+🌠 *Your Life Direction*  
+Your journey revolves around ${d.coreTheme || "self-discovery and growth"}.
 
 💪 *Your Strength*  
-You carry ${b.qualities.toLowerCase()} within you.  
-This is your natural power… use it consciously.
+You carry ${b.qualities || "hidden strengths"} within you.
 
-⚠️ *Your Inner Challenge*  
-At times, you may face ${b.relationshipIssues.toLowerCase()}.  
-This is where your growth is hidden.
+⚠️ *Your Inner Conflict*  
+Sometimes you struggle with ${b.relationshipIssues || "internal balance"}.
 
-💫 *A Small Guidance for You*  
-Start doing this regularly: *${b.dailyRitual}*  
-It may look simple… but it aligns your energy deeply.
+💫 *Guidance for You*  
+Start doing this: *${ritual}*
 
-🎯 *Your Natural Alignment*  
-Your energy resonates with numbers: *${b.luckyNumbers}*  
-And colors like *${b.colors}* amplify your presence.
+🎯 *Alignment*  
+Lucky Numbers: ${b.luckyNumbers || "Not defined"}  
+Colors: ${b.colors || "Follow what attracts you"}
 
-🧿 *One Truth About You*  
-You are not here randomly…  
-your life is quietly shaped around *${b.coreTheme.toLowerCase()}*
+🧿 *Truth About You*  
+You are not random…  
+Your life is shaped around *${b.coreTheme || "your inner purpose"}*
 
 —
 
-If this felt accurate… it’s because this is just the surface.
+⚡ This is just surface-level.
 
-👉 For deeper personal reading:  
-https://wa.me/917895424239  
+👉 Your deeper patterns (money, love, timing) are still hidden.
+
+📲 WhatsApp: https://wa.me/917895424239  
 📩 Telegram: https://t.me/drubixCage
 `;
 }
@@ -118,78 +120,72 @@ bot.onText(/\/start/, (msg) => {
     chatId,
     `🧿 Welcome to CosmicPot
 
-Before we begin… tell me your Date of Birth.
+Tell me your Date of Birth:
 
-You can type it in any format:
-27-10-1997 / 27/10/1997 / 27101997
-
-I’ll understand.`
+Example:
+27-10-1997 / 27/10/1997 / 27101997`
   );
 
   userState[chatId] = "WAITING_DOB";
 });
 
-// 📩 MESSAGE HANDLER
+// 📩 HANDLER
 bot.on("message", (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
   if (!text) return;
 
-  // 👉 If waiting DOB
+  // DOB INPUT
   if (userState[chatId] === "WAITING_DOB") {
     const dob = parseDOB(text);
 
     if (!dob) {
-      return bot.sendMessage(
-        chatId,
-        "❌ That doesn’t look right.\nTry like: 27-10-1997"
-      );
+      return bot.sendMessage(chatId, "❌ Invalid DOB format");
     }
 
     userData[chatId] = { dob };
     userState[chatId] = null;
 
-    bot.sendMessage(chatId, `📌 Got it… *${dob}*\n\nLet me read this… 🧿`, {
+    const { birth, destiny } = calculateNumbers(dob);
+
+    bot.sendMessage(chatId, generateCoreMessage(birth, destiny), {
       parse_mode: "Markdown"
     });
 
-    const { birth, destiny } = calculateNumbers(dob);
-
-    const message = generateCoreMessage(birth, destiny);
-
-    bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
-
     return sendMenu(chatId);
   }
 
-  // 👉 Core Energy
+  // CORE ENERGY
   if (text.includes("Core Energy")) {
     if (!userData[chatId]) {
       userState[chatId] = "WAITING_DOB";
-      return bot.sendMessage(chatId, "📩 First, send your DOB");
+      return bot.sendMessage(chatId, "📩 Send your DOB first");
     }
 
     const { birth, destiny } = calculateNumbers(userData[chatId].dob);
-    const message = generateCoreMessage(birth, destiny);
 
-    bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, generateCoreMessage(birth, destiny), {
+      parse_mode: "Markdown"
+    });
+
     return sendMenu(chatId);
   }
 
-  // 👉 Love Match
+  // LOVE MATCH
   if (text.includes("Love Match")) {
     userState[chatId] = "LOVE_DOB";
-    return bot.sendMessage(chatId, "💘 Send your DOB first");
+    return bot.sendMessage(chatId, "💘 Send your DOB");
   }
 
   if (userState[chatId] === "LOVE_DOB") {
     const dob = parseDOB(text);
     if (!dob) return bot.sendMessage(chatId, "❌ Invalid DOB");
 
+    userData[chatId] = userData[chatId] || {};
     userData[chatId].love1 = dob;
-    userState[chatId] = "LOVE_DOB_2";
 
+    userState[chatId] = "LOVE_DOB_2";
     return bot.sendMessage(chatId, "💘 Now send partner DOB");
   }
 
@@ -209,13 +205,11 @@ bot.on("message", (msg) => {
 You: ${b1}  
 Partner: ${b2}
 
-⚡ Energy Gap: ${score}
-
-This connection feels ${
-        score <= 2 ? "naturally aligned 💫" : "intense & karmic 🔥"
+Connection: ${
+        score <= 2 ? "Aligned 💫" : "Karmic 🔥"
       }
 
-👉 Want deeper relationship decoding?  
+👉 Full reading:
 https://wa.me/917895424239`,
       { parse_mode: "Markdown" }
     );
@@ -224,45 +218,36 @@ https://wa.me/917895424239`,
     return sendMenu(chatId);
   }
 
-  // 👉 Guidance
+  // GUIDANCE
   if (text.includes("Guidance")) {
     bot.sendMessage(
       chatId,
-      `🔮 *Personal Guidance*
+      `🔮 *Guidance*
 
-Right now… your energy is asking for clarity.
+Slow down. Observe. Don’t react fast.
 
-Slow down. Observe. Don’t react instantly.
+Clarity will come from awareness.
 
-Your next breakthrough will come from *awareness*, not action.
-
-👉 For deeper personal guidance:  
-https://wa.me/917895424239  
-📩 Telegram: https://t.me/drubixCage`,
+👉 https://wa.me/917895424239`,
       { parse_mode: "Markdown" }
     );
-
     return sendMenu(chatId);
   }
 
-  // 👉 Premium
+  // PREMIUM
   if (text.includes("Premium")) {
     bot.sendMessage(
       chatId,
       `💎 *Premium Reading*
 
-This is where we go deeper:
+Unlock:
+• Career timing  
+• Love patterns  
+• Money cycles  
 
-✔ Detailed life prediction  
-✔ Career & money timing  
-✔ Relationship patterns  
-✔ Personal remedies  
-
-👉 Start here:  
-https://wa.me/917895424239`,
+👉 https://wa.me/917895424239`,
       { parse_mode: "Markdown" }
     );
-
     return sendMenu(chatId);
   }
 });
@@ -272,9 +257,7 @@ const app = express();
 app.use(bodyParser.json());
 
 app.get("/", (req, res) => {
-  res.send("Bot is running...");
+  res.send("Bot running 🧿");
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Server running...");
-});
+app.listen(process.env.PORT || 3000);
