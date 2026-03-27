@@ -2,13 +2,18 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
+const path = require("path");
 
+// 🔑 TOKEN
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-// ✅ FIXED FILE NAME
-const data = JSON.parse(fs.readFileSync("./numerologyData.json", "utf-8"));
+// ✅ SAFE FILE LOAD (FIXED FOR RENDER)
+const data = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "numerologyData.json"), "utf-8")
+);
 
+// 🧠 USER MEMORY
 const userState = {};
 const userData = {};
 
@@ -20,7 +25,7 @@ function reduceNumber(num) {
   return num;
 }
 
-// 🔢 CALCULATION
+// 🔢 CALCULATE
 function calculateNumbers(dob) {
   const digits = dob.replace(/\D/g, "");
 
@@ -33,7 +38,7 @@ function calculateNumbers(dob) {
   return { birth, destiny };
 }
 
-// 📅 DOB PARSER
+// 📅 FLEXIBLE DOB PARSER
 function parseDOB(input) {
   const clean = input.replace(/[^\d]/g, "");
   if (clean.length !== 8) return null;
@@ -45,7 +50,7 @@ function parseDOB(input) {
   return `${day}-${month}-${year}`;
 }
 
-// 💬 MENU
+// 📲 MENU
 function sendMenu(chatId) {
   bot.sendMessage(chatId, "🧿 Choose your next step:", {
     reply_markup: {
@@ -59,56 +64,61 @@ function sendMenu(chatId) {
   });
 }
 
-// 🌟 CORE MESSAGE (FIXED SAFE)
+// 🌟 CORE RESPONSE (EMOTIONAL + SAFE)
 function generateCoreMessage(birth, destiny) {
   const b = data[String(birth)] || {};
   const d = data[String(destiny)] || {};
 
   const ritual = Array.isArray(b.dailyRitual)
     ? b.dailyRitual.join(", ")
-    : b.dailyRitual || "Follow a consistent daily routine";
+    : b.dailyRitual || "Follow a disciplined daily routine";
 
   return `🧿 *Your Cosmic Blueprint*
 
-I looked into your numbers… and something about you stood out.
+I observed your numbers carefully… and there’s a pattern here.
 
 🔢 *Birth Number:* ${birth}  
 🌌 *Destiny Number:* ${destiny}
 
 ✨ *Your Nature*  
-You are someone who is ${b.nature || "unique in your own way"}.
+You are someone who is *${b.nature || "unique, but still unfolding"}*.
 
-🧠 *How People See You*  
-You come across as ${b.personality || "strong and thoughtful"}.
+🧠 *Your Personality Layer*  
+You often appear as *${b.personality || "strong, yet thoughtful"}* to others.
 
 🌠 *Your Life Direction*  
-Your journey revolves around ${d.coreTheme || "self-discovery and growth"}.
+Your journey is guided by *${d.coreTheme || "deep personal growth"}*.
 
-💪 *Your Strength*  
-You carry ${b.qualities || "hidden strengths"} within you.
+💪 *Your Strength Zone*  
+You naturally carry *${b.qualities || "hidden strengths waiting to activate"}*.
 
 ⚠️ *Your Inner Conflict*  
-Sometimes you struggle with ${b.relationshipIssues || "internal balance"}.
+Sometimes you struggle with *${b.relationshipIssues || "balancing emotions and logic"}*.
 
-💫 *Guidance for You*  
-Start doing this: *${ritual}*
+💫 *What You Should Start Doing*  
+👉 ${ritual}
 
-🎯 *Alignment*  
-Lucky Numbers: ${b.luckyNumbers || "Not defined"}  
-Colors: ${b.colors || "Follow what attracts you"}
+🎯 *Alignment Signals*  
+Lucky Numbers: ${b.luckyNumbers || "Follow your intuition"}  
+Colors: ${b.colors || "Wear what feels right energetically"}
 
 🧿 *Truth About You*  
-You are not random…  
-Your life is shaped around *${b.coreTheme || "your inner purpose"}*
+You are not random.  
+You are moving through a pattern designed around *${b.coreTheme || "your purpose"}*.
 
 —
 
-⚡ This is just surface-level.
+⚡ This is just the surface.
 
-👉 Your deeper patterns (money, love, timing) are still hidden.
+There are deeper patterns in:
+• money  
+• relationships  
+• timing  
+
+👉 Want to unlock that?
 
 📲 WhatsApp: https://wa.me/917895424239  
-📩 Telegram: https://t.me/drubixCage
+📩 Telegram: https://t.me/dRubixCage
 `;
 }
 
@@ -123,20 +133,22 @@ bot.onText(/\/start/, (msg) => {
 Tell me your Date of Birth:
 
 Example:
-27-10-1997 / 27/10/1997 / 27101997`
+27-10-1997  
+27/10/1997  
+27101997`
   );
 
   userState[chatId] = "WAITING_DOB";
 });
 
-// 📩 HANDLER
+// 📩 MAIN HANDLER
 bot.on("message", (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
   if (!text) return;
 
-  // DOB INPUT
+  // 📅 DOB INPUT
   if (userState[chatId] === "WAITING_DOB") {
     const dob = parseDOB(text);
 
@@ -156,7 +168,7 @@ bot.on("message", (msg) => {
     return sendMenu(chatId);
   }
 
-  // CORE ENERGY
+  // 🔢 CORE ENERGY
   if (text.includes("Core Energy")) {
     if (!userData[chatId]) {
       userState[chatId] = "WAITING_DOB";
@@ -172,7 +184,7 @@ bot.on("message", (msg) => {
     return sendMenu(chatId);
   }
 
-  // LOVE MATCH
+  // 💘 LOVE MATCH
   if (text.includes("Love Match")) {
     userState[chatId] = "LOVE_DOB";
     return bot.sendMessage(chatId, "💘 Send your DOB");
@@ -211,6 +223,7 @@ Connection: ${
 
 👉 Full reading:
 https://wa.me/917895424239`,
+   https://t.me/dRubixCage
       { parse_mode: "Markdown" }
     );
 
@@ -218,32 +231,32 @@ https://wa.me/917895424239`,
     return sendMenu(chatId);
   }
 
-  // GUIDANCE
+  // 🔮 GUIDANCE
   if (text.includes("Guidance")) {
     bot.sendMessage(
       chatId,
       `🔮 *Guidance*
 
-Slow down. Observe. Don’t react fast.
-
-Clarity will come from awareness.
+Pause before reacting.  
+Your clarity is hidden in stillness.
 
 👉 https://wa.me/917895424239`,
+    https://t.me/dRubixCage
       { parse_mode: "Markdown" }
     );
     return sendMenu(chatId);
   }
 
-  // PREMIUM
+  // 💎 PREMIUM
   if (text.includes("Premium")) {
     bot.sendMessage(
       chatId,
       `💎 *Premium Reading*
 
-Unlock:
+Unlock deeper layers:
 • Career timing  
-• Love patterns  
-• Money cycles  
+• Love cycles  
+• Financial patterns  
 
 👉 https://wa.me/917895424239`,
       { parse_mode: "Markdown" }
@@ -252,7 +265,7 @@ Unlock:
   }
 });
 
-// 🌐 SERVER
+// 🌐 SERVER (RENDER REQUIREMENT)
 const app = express();
 app.use(bodyParser.json());
 
