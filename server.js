@@ -1,45 +1,52 @@
 const express = require("express");
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
+const path = require("path");
 const { getFullNumerology } = require("./numberEngine");
 
 const app = express();
 app.use(express.json());
 
-// 🔑 ENV
 const TOKEN = process.env.BOT_TOKEN;
+
+if (!TOKEN) {
+  console.error("BOT_TOKEN missing");
+  process.exit(1);
+}
+
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-// 📂 LOAD DATA
-const numerologyData = JSON.parse(
-  fs.readFileSync("./numerologyData.json", "utf-8")
-);
+// LOAD DATA
+let numerologyData = {};
+try {
+  const filePath = path.join(__dirname, "numerologyData.json");
+  numerologyData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+} catch (err) {
+  console.error("Error loading numerologyData.json", err);
+  process.exit(1);
+}
 
-// 🧠 USER MEMORY (temporary)
-let users = {};
+// USER MEMORY
+const users = {};
 
-// 📅 DOB PARSER (supports multiple formats)
-function parseDOBFlexible(input) {
-  const cleaned = input.replace(/[\/.\s]/g, "-");
-  const parts = cleaned.split("-").map(Number);
+// FLEX DOB PARSER
+function parseDOB(input) {
+  const clean = input.replace(/[\/.\s]/g, "-");
+  const parts = clean.split("-").map(Number);
 
   if (parts.length !== 3) return null;
 
   let [d, m, y] = parts;
-
-  if (y < 100) y += 1900; // basic fallback
-
   if (!d || !m || !y) return null;
 
-  return `${String(d).padStart(2, "0")}-${String(m).padStart(
-    2,
-    "0"
-  )}-${y}`;
+  if (y < 100) y += 1900;
+
+  return `${String(d).padStart(2, "0")}-${String(m).padStart(2, "0")}-${y}`;
 }
 
-// 🎛️ MAIN MENU
-function sendMenu(chatId) {
-  bot.sendMessage(chatId, "🔮 Choose your next step:", {
+// MENU
+function menu(chatId) {
+  bot.sendMessage(chatId, "✨ What do you want to explore next?", {
     reply_markup: {
       keyboard: [
         ["🔢 Core Energy", "💞 Love Match"],
@@ -51,34 +58,38 @@ function sendMenu(chatId) {
   });
 }
 
-// 🚀 START
+// START
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
   bot.sendMessage(
     chatId,
-    `🔮 Welcome to CosmicPot
+`🔮 Welcome to CosmicPot
 
-You are not here by chance.
-Your numbers brought you here.
+Some people come here out of curiosity…
 
-Send your Date of Birth:
+But some arrive because something inside them
+is quietly asking for answers.
+
+If you're here, you're probably the second one.
+
+📩 Send your Date of Birth  
 (DD-MM-YYYY)
 
 Example: 27-10-1997`
   );
 
-  sendMenu(chatId);
+  menu(chatId);
 });
 
-// 🧾 HANDLE MESSAGES
+// MAIN HANDLER
 bot.on("message", (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
   if (!text || text.startsWith("/")) return;
 
-  // 📌 MENU ACTIONS
+  // MENU BUTTONS
   if (
     text === "🔢 Core Energy" ||
     text === "🌌 Time Energy" ||
@@ -87,59 +98,52 @@ bot.on("message", (msg) => {
     if (users[chatId]?.dob) {
       bot.sendMessage(
         chatId,
-        `📌 Your saved DOB: ${users[chatId].dob}
+`📌 I remember your DOB: ${users[chatId].dob}
+
+Do you want me to go deeper with this  
+or explore something new?
 
 1️⃣ Use this DOB  
 2️⃣ Enter new DOB`
       );
-      users[chatId].pendingAction = text;
+      users[chatId].pending = text;
       return;
     } else {
-      bot.sendMessage(chatId, "📩 Send your DOB first (DD-MM-YYYY)");
-      users[chatId] = { pendingAction: text };
+      bot.sendMessage(chatId, "📩 Send your DOB first");
+      users[chatId] = { pending: text };
       return;
     }
   }
 
+  // LOVE MATCH
   if (text === "💞 Love Match") {
-    bot.sendMessage(chatId, "💞 Send your DOB");
+    bot.sendMessage(chatId,
+`💞 Love is never random…
+
+Send your DOB first`);
     users[chatId] = { step: "love1" };
     return;
   }
 
-  if (text === "💎 Premium Reading") {
-    bot.sendMessage(
-      chatId,
-      `💎 This is where real transformation begins.
-
-Your full life decoding is not random.
-It’s personal.
-
-📲 WhatsApp:
-https://wa.me/917895424239
-
-📩 Telegram:
-https://t.me/dRubixCage`
-    );
-    sendMenu(chatId);
-    return;
-  }
-
-  // ❤️ LOVE FLOW
   if (users[chatId]?.step === "love1") {
-    const dob = parseDOBFlexible(text);
+    const dob = parseDOB(text);
     if (!dob) {
       bot.sendMessage(chatId, "❌ Send DOB properly");
       return;
     }
+
     users[chatId].dob1 = dob;
     users[chatId].step = "love2";
-    bot.sendMessage(chatId, "💞 Now send partner DOB");
+
+    bot.sendMessage(chatId,
+`Now send their DOB…
+
+Let’s see what energy connects you both`);
     return;
   }
 
   if (users[chatId]?.step === "love2") {
-    const dob = parseDOBFlexible(text);
+    const dob = parseDOB(text);
     if (!dob) {
       bot.sendMessage(chatId, "❌ Send DOB properly");
       return;
@@ -149,18 +153,23 @@ https://t.me/dRubixCage`
     const n2 = getFullNumerology(dob);
 
     const score =
-      Math.abs(n1.birth - n2.birth) <= 2 ? "🔥 Strong" : "⚡ Challenging";
+      Math.abs(n1.birth - n2.birth) <= 2 ? "🔥 Deep pull" : "⚡ Karmic friction";
 
     bot.sendMessage(
       chatId,
-      `💞 Love Compatibility
+`💞 Love Compatibility
 
 You: ${n1.birth}
 Partner: ${n2.birth}
 
 Result: ${score}
 
-👉 Want real compatibility analysis?
+This connection isn't random.
+
+It either teaches…  
+or transforms.
+
+👉 Want to know *why* this bond exists?
 
 📲 WhatsApp:
 https://wa.me/917895424239
@@ -170,12 +179,36 @@ https://t.me/dRubixCage`
     );
 
     users[chatId] = {};
-    sendMenu(chatId);
+    menu(chatId);
     return;
   }
 
-  // 📅 DOB INPUT
-  const dob = parseDOBFlexible(text);
+  // PREMIUM
+  if (text === "💎 Premium Reading") {
+    bot.sendMessage(
+      chatId,
+`💎 What you’ve seen so far…
+
+is barely 20% of your pattern.
+
+The rest?
+
+Hidden in layers you don’t consciously notice.
+
+👉 Full decoding here:
+
+📲 WhatsApp:
+https://wa.me/917895424239
+
+📩 Telegram:
+https://t.me/dRubixCage`
+    );
+    menu(chatId);
+    return;
+  }
+
+  // DOB INPUT
+  const dob = parseDOB(text);
 
   if (!dob) {
     if (text !== "1" && text !== "2") {
@@ -190,42 +223,48 @@ https://t.me/dRubixCage`
   const data = numerologyData[num.birth];
 
   if (!data) {
-    bot.sendMessage(chatId, "❌ Data not found");
+    bot.sendMessage(chatId, "❌ Missing data");
     return;
   }
 
-  // 🔢 CORE ENERGY OUTPUT
+  // CORE RESPONSE (EMOTIONAL ENGINE)
   const message = `
-🔮 Cosmic Profile
+🔮 Your Cosmic Blueprint
 
-Birth Number: ${num.birth}
+Birth Number: ${num.birth}  
 Destiny Number: ${num.destiny}
+
+---
 
 ✨ ${data.title}
 
-🧠 Traits:
+🧠 The way you think:
 ${data.traits}
 
-💪 Strengths:
+💪 What naturally works in your favor:
 ${data.strengths}
 
-⚠️ Challenge:
+⚠️ The silent pattern you struggle with:
 ${data.weakness}
 
-🧿 Remedies:
+🧿 What balances your energy:
 ${data.remedies.join(", ")}
 
 ---
 
-You are not random.
+If you're honest with yourself…
 
-You are reacting to patterns…
-patterns created by your own numbers.
+you’ve felt this pattern before, haven’t you?
 
-And once you see them clearly,
-your entire direction shifts.
+Moments where things repeat…  
+reactions you can't fully explain…
 
-👉 Want full personal decoding?
+That’s not coincidence.
+
+That’s your number playing out.
+
+👉 Want to break the pattern  
+instead of repeating it?
 
 📲 WhatsApp:
 https://wa.me/917895424239
@@ -236,13 +275,16 @@ https://t.me/dRubixCage
 
   bot.sendMessage(chatId, message);
 
-  sendMenu(chatId);
+  menu(chatId);
 });
 
-// 🌐 SERVER
+// SERVER
 app.get("/", (req, res) => {
-  res.send("Bot is running 🚀");
+  res.send("Bot running");
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running"));
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
