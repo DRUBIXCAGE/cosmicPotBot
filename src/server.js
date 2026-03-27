@@ -4,7 +4,7 @@ const path = require('path');
 
 const { getFullNumerology } = require('./numberEngine');
 
-// ✅ Load correct data
+// ✅ Load numerology data
 const numerologyData = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'numerologyData.json'), 'utf-8')
 );
@@ -14,9 +14,29 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 // ✅ Store user state
 const userState = {};
 
-// 🌌 MENU
+// =========================
+// HELPERS
+// =========================
+
+// Validate DOB
+function isDOB(text) {
+  return /^(\d{1,2})[-\/ ](\d{1,2})[-\/ ](\d{2,4})$/.test(text);
+}
+
+// Format DOB
+function formatDOB(text) {
+  const match = text.match(/^(\d{1,2})[-\/ ](\d{1,2})[-\/ ](\d{2,4})$/);
+  if (!match) return null;
+
+  let [_, d, m, y] = match;
+  if (y.length === 2) y = "19" + y;
+
+  return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+}
+
+// Menu
 function sendMenu(chatId) {
-  bot.sendMessage(chatId, "✨ What do you want to explore next?", {
+  bot.sendMessage(chatId, "✨ Choose what you want to explore:", {
     reply_markup: {
       keyboard: [
         ["🔢 Core Energy", "🌌 Time Energy"],
@@ -27,63 +47,71 @@ function sendMenu(chatId) {
   });
 }
 
-// 🔮 CLEAN RESPONSE (DATA-DRIVEN)
+// Safe reading generator
 function generateReading(dob, result) {
-  const data = numerologyData[result.birth];
+  try {
+    const data = numerologyData[result.birth];
 
-  if (!data) return "⚠️ No data found.";
+    if (!data) return "⚠️ Unable to read your numerology data.";
 
-  return `🔮 *Your Cosmic Blueprint*
+    return `🔮 *Your Cosmic Reading*
 
-Your birth date *${dob}* is not random.
-
-It carries a vibration… and that vibration shapes who you are.
+📅 DOB: *${dob}*  
+🔢 Birth Number: *${result.birth}*
 
 ━━━━━━━━━━━━━━━
 
-🔢 *Birth Number: ${result.birth}*  
-🌟 Planet: ${data.planet}
+🌟 *Planet*  
+${data.planet}
 
 🧠 *Personality*  
 ${data.personality}
 
-✨ *Core Strength*  
+✨ *Strengths*  
 ${data.qualities.join(', ')}
 
-⚠️ *Life Challenge*  
+⚠️ *Challenges*  
 ${data.relationshipIssues.join(', ')}
 
-🎯 *Your Core Theme*  
+🎯 *Life Theme*  
 ${data.coreTheme}
 
 ━━━━━━━━━━━━━━━
 
-🧿 *A message for you*
-
-You are not here to fit in.  
-You are here to *express your pattern fully*.
-
-The more you align with it…  
-the less confusion you will feel.
-
-━━━━━━━━━━━━━━━
-
-⚡ *Your Ritual*  
+⚡ *Do this daily*  
 ${data.dailyRitual}
 
-🎨 *Lucky Colors*  
-${data.colors.join(', ')}
-
-🔢 *Lucky Numbers*  
-${data.luckyNumbers.join(', ')}
+🎨 Colors: ${data.colors.join(', ')}  
+🔢 Numbers: ${data.luckyNumbers.join(', ')}
 
 ━━━━━━━━━━━━━━━
 
-✨ Want to go deeper? Choose below 👇`;
+✨ Choose next option below 👇`;
+
+  } catch (err) {
+    console.error("Reading error:", err);
+    return "⚠️ Error generating reading.";
+  }
 }
 
-// ✅ MESSAGE HANDLER
-bot.on('message', (msg) => {
+// =========================
+// START COMMAND
+// =========================
+bot.onText(/\/start/, (msg) => {
+  bot.sendMessage(msg.chat.id,
+`🔮 Welcome to CosmicPot
+
+Send your Date of Birth  
+(DD-MM-YYYY or DD/MM/YYYY)
+
+Example: 27-10-1997`
+  );
+});
+
+// =========================
+// MAIN HANDLER (STRICT FLOW)
+// =========================
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text?.trim();
 
@@ -91,115 +119,112 @@ bot.on('message', (msg) => {
 
   console.log("User:", text);
 
-  // =========================
-  // START
-  // =========================
-  if (text === '/start') {
-    bot.sendMessage(chatId,
-`🔮 Welcome to CosmicPot
+  try {
 
-Some people come here out of curiosity...
+    // Ignore /start duplicate
+    if (text.startsWith('/start')) return;
 
-But some arrive because something inside them  
-has been quietly asking questions.
+    // =========================
+    // 1. DOB INPUT (TOP PRIORITY)
+    // =========================
+    if (isDOB(text)) {
+      const dob = formatDOB(text);
 
-If you're here, you're probably the second one.
+      if (!dob) {
+        bot.sendMessage(chatId, "⚠️ Invalid date format.");
+        return;
+      }
 
-📩 Send your Date of Birth  
-(DD-MM-YYYY or DD/MM/YYYY)`
-    );
-    return;
-  }
+      userState[chatId] = { dob };
 
-  // =========================
-  // DOB INPUT
-  // =========================
-  const dobMatch = text.match(/^(\d{1,2})[-\/ ](\d{1,2})[-\/ ](\d{2,4})$/);
+      const result = getFullNumerology(dob);
 
-  if (dobMatch) {
-    let [_, d, m, y] = dobMatch;
+      const reply = generateReading(dob, result);
 
-    if (y.length === 2) y = "19" + y;
+      await bot.sendMessage(chatId, reply, { parse_mode: "Markdown" });
 
-    const dob = `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
-
-    userState[chatId] = { dob };
-
-    const result = getFullNumerology(dob);
-
-    const response = generateReading(dob, result);
-
-    bot.sendMessage(chatId, response, { parse_mode: "Markdown" });
-
-    sendMenu(chatId);
-    return;
-  }
-
-  // =========================
-  // CORE ENERGY
-  // =========================
-  if (text.includes("Core Energy")) {
-    if (!userState[chatId]?.dob) {
-      bot.sendMessage(chatId, "📩 Send your DOB first");
+      sendMenu(chatId);
       return;
     }
 
-    const dob = userState[chatId].dob;
-    const result = getFullNumerology(dob);
+    // =========================
+    // 2. CORE ENERGY
+    // =========================
+    if (text === "🔢 Core Energy") {
+      const user = userState[chatId];
 
-    bot.sendMessage(chatId, generateReading(dob, result), {
-      parse_mode: "Markdown"
-    });
+      if (!user || !user.dob) {
+        bot.sendMessage(chatId, "📩 Please send your DOB first.");
+        return;
+      }
 
-    sendMenu(chatId);
-    return;
-  }
+      const result = getFullNumerology(user.dob);
+      const reply = generateReading(user.dob, result);
 
-  // =========================
-  // TIME ENERGY
-  // =========================
-  if (text.includes("Time")) {
-    if (!userState[chatId]?.dob) {
-      bot.sendMessage(chatId, "📩 Send your DOB first");
+      await bot.sendMessage(chatId, reply, { parse_mode: "Markdown" });
+
+      sendMenu(chatId);
       return;
     }
 
-    const result = getFullNumerology(userState[chatId].dob);
+    // =========================
+    // 3. TIME ENERGY
+    // =========================
+    if (text === "🌌 Time Energy") {
+      const user = userState[chatId];
 
-    bot.sendMessage(chatId,
-`🌌 *Your Time Energy*
+      if (!user || !user.dob) {
+        bot.sendMessage(chatId, "📩 Please send your DOB first.");
+        return;
+      }
 
-Year: ${result.personalYear}  
-Month: ${result.personalMonth}  
-Day: ${result.personalDay}
+      const result = getFullNumerology(user.dob);
 
-You are currently in a cycle of transformation.`,
-      { parse_mode: "Markdown" }
-    );
+      await bot.sendMessage(chatId,
+`🌌 *Time Energy*
 
-    sendMenu(chatId);
-    return;
-  }
+Year: ${result.personalYear}
+Month: ${result.personalMonth}
+Day: ${result.personalDay}`,
+        { parse_mode: "Markdown" }
+      );
 
-  // =========================
-  // LOVE MATCH
-  // =========================
-  if (text.includes("Love")) {
-    bot.sendMessage(chatId, "💞 Love matching coming soon...");
-    return;
-  }
+      sendMenu(chatId);
+      return;
+    }
 
-  // =========================
-  // GUIDANCE
-  // =========================
-  if (text.includes("Guidance")) {
-    bot.sendMessage(chatId,
-`🔮 Sometimes one insight can change everything.
+    // =========================
+    // 4. LOVE
+    // =========================
+    if (text === "💞 Love Match") {
+      bot.sendMessage(chatId,
+"💞 Send both DOBs like:\n27-10-1997 & 14-02-1998"
+      );
+      return;
+    }
+
+    // =========================
+    // 5. GUIDANCE
+    // =========================
+    if (text === "🔮 Guidance") {
+      bot.sendMessage(chatId,
+`🔮 For deeper guidance:
 
 👉 WhatsApp: https://wa.me/917895424239  
 👉 Telegram: https://t.me/drubixCage`
-    );
-    return;
-  }
+      );
+      return;
+    }
 
+    // =========================
+    // DEFAULT RESPONSE
+    // =========================
+    bot.sendMessage(chatId,
+"📩 Send your Date of Birth (DD-MM-YYYY)"
+    );
+
+  } catch (err) {
+    console.error("Main handler error:", err);
+    bot.sendMessage(chatId, "⚠️ Something went wrong. Try again.");
+  }
 });
