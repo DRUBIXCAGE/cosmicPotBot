@@ -1,36 +1,77 @@
 function reduceNumber(num) {
   while (num > 9 && ![11, 22, 33].includes(num)) {
-    num = num.toString().split('').reduce((a, b) => a + Number(b), 0);
+    num = num
+      .toString()
+      .split('')
+      .reduce((a, b) => a + Number(b), 0);
   }
   return num;
 }
 
+// 🧿 FLEXIBLE DOB PARSER
 function parseDOB(dob) {
-  const [day, month, year] = dob.split('-').map(Number);
-  return { day, month, year };
+  const cleaned = dob.replace(/[\/\s]/g, '-');
+  const parts = cleaned.split('-');
+
+  if (parts.length !== 3) return null;
+
+  let [day, month, year] = parts;
+
+  if (year.length === 2) year = "19" + year;
+
+  if (day.length === 1) day = "0" + day;
+  if (month.length === 1) month = "0" + month;
+
+  return {
+    day: Number(day),
+    month: Number(month),
+    year: Number(year),
+    raw: `${day}-${month}-${year}`
+  };
 }
 
+// 🧿 MAIN ENGINE
 function getFullNumerology(dob) {
-  const { day, month, year } = parseDOB(dob);
+  const parsed = parseDOB(dob);
 
+  if (!parsed) return null;
+
+  const { day, month, year } = parsed;
+
+  // 🔢 Birth Number
   const birth = reduceNumber(day);
 
+  // 🔢 Destiny Number (FIXED)
+  const fullDOB = `${day.toString().padStart(2, '0')}${month
+    .toString()
+    .padStart(2, '0')}${year}`;
+
   const destiny = reduceNumber(
-    `${day}${month}${year}`.split('').reduce((a, b) => a + Number(b), 0)
+    fullDOB.split('').reduce((a, b) => a + Number(b), 0)
   );
 
+  // 🔢 Attitude & Maturity
   const attitude = reduceNumber(day + month);
   const maturity = reduceNumber(birth + destiny);
 
+  // 🕒 Time Energy
   const now = new Date();
+
+  const currentYear = now.getFullYear();
+
   const personalYear = reduceNumber(
-    `${day}${month}${now.getFullYear()}`
+    `${day}${month}${currentYear}`
       .split('')
       .reduce((a, b) => a + Number(b), 0)
   );
 
-  const personalMonth = reduceNumber(personalYear + (now.getMonth() + 1));
-  const personalDay = reduceNumber(personalMonth + now.getDate());
+  const personalMonth = reduceNumber(
+    personalYear + (now.getMonth() + 1)
+  );
+
+  const personalDay = reduceNumber(
+    personalMonth + now.getDate()
+  );
 
   return {
     birth,
@@ -39,7 +80,8 @@ function getFullNumerology(dob) {
     maturity,
     personalYear,
     personalMonth,
-    personalDay
+    personalDay,
+    formattedDOB: parsed.raw
   };
 }
 
