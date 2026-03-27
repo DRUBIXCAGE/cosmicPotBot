@@ -4,95 +4,82 @@ const path = require('path');
 
 const { getFullNumerology } = require('./numberEngine');
 
-// ✅ Load data correctly from src folder
+// ✅ Load correct data
 const numerologyData = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'numerologyData.json'), 'utf-8')
 );
 
-// ✅ BOT TOKEN
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-// ✅ In-memory user state
+// ✅ Store user state
 const userState = {};
 
-// ✅ MENU
+// 🌌 MENU
 function sendMenu(chatId) {
   bot.sendMessage(chatId, "✨ What do you want to explore next?", {
     reply_markup: {
       keyboard: [
-        ["🔢 Core Energy", "💞 Love Match"],
-        ["🌌 Time Energy", "🔮 Get Guidance"],
-        ["💎 Premium Reading"]
+        ["🔢 Core Energy", "🌌 Time Energy"],
+        ["💞 Love Match", "🔮 Guidance"]
       ],
       resize_keyboard: true
     }
   });
 }
 
-// ✅ FORMAT RESPONSE (EMOTIONAL + DEEP)
-function generateCoreReading(dob, result) {
-  const birthData = numerologyData[result.birth] || {};
-  const destinyData = numerologyData[result.destiny] || {};
+// 🔮 CLEAN RESPONSE (DATA-DRIVEN)
+function generateReading(dob, result) {
+  const data = numerologyData[result.birth];
 
-  return `🔮 *Your Cosmic Blueprint is unfolding...*
+  if (!data) return "⚠️ No data found.";
 
-You were not born randomly.
+  return `🔮 *Your Cosmic Blueprint*
 
-Your date *${dob}* carries a pattern...  
-and that pattern is speaking.
+Your birth date *${dob}* is not random.
 
-━━━━━━━━━━━━━━━
-
-✨ *Your Birth Energy (${result.birth})*  
-${birthData.title || "Unknown Energy"}
-
-You naturally carry traits like:  
-${birthData.traits || "..."}
-
-But what makes you powerful is:  
-${birthData.strengths || "..."}
-
-⚠️ Deep inside, your challenge has always been:  
-${birthData.weakness || "..."}
+It carries a vibration… and that vibration shapes who you are.
 
 ━━━━━━━━━━━━━━━
 
-🌌 *Your Destiny Path (${result.destiny})*  
-${destinyData.title || "Unknown Path"}
+🔢 *Birth Number: ${result.birth}*  
+🌟 Planet: ${data.planet}
 
-This is not who you are…  
-this is who you are becoming.
+🧠 *Personality*  
+${data.personality}
 
-You are meant to grow into:  
-${destinyData.traits || "..."}
+✨ *Core Strength*  
+${data.qualities.join(', ')}
 
-And life keeps pushing you toward:  
-${destinyData.strengths || "..."}
+⚠️ *Life Challenge*  
+${data.relationshipIssues.join(', ')}
 
-━━━━━━━━━━━━━━━
-
-🧿 *Hidden Truth About You*
-
-There are moments in your life where you feel:  
-"Why do I feel different from others?"
-
-That’s not confusion.  
-That’s alignment trying to happen.
+🎯 *Your Core Theme*  
+${data.coreTheme}
 
 ━━━━━━━━━━━━━━━
 
-⚡ *What You Should Do Right Now*
+🧿 *A message for you*
 
-${(birthData.remedies || []).join('\n')}
+You are not here to fit in.  
+You are here to *express your pattern fully*.
+
+The more you align with it…  
+the less confusion you will feel.
 
 ━━━━━━━━━━━━━━━
 
-If this felt *a little too accurate...*
+⚡ *Your Ritual*  
+${data.dailyRitual}
 
-👉 WhatsApp: https://wa.me/917895424239  
-👉 Telegram: https://t.me/drubixCage
+🎨 *Lucky Colors*  
+${data.colors.join(', ')}
 
-Some answers require going deeper than numbers.`;
+🔢 *Lucky Numbers*  
+${data.luckyNumbers.join(', ')}
+
+━━━━━━━━━━━━━━━
+
+✨ Want to go deeper? Choose below 👇`;
 }
 
 // ✅ MESSAGE HANDLER
@@ -102,6 +89,8 @@ bot.on('message', (msg) => {
 
   if (!text) return;
 
+  console.log("User:", text);
+
   // =========================
   // START
   // =========================
@@ -109,7 +98,7 @@ bot.on('message', (msg) => {
     bot.sendMessage(chatId,
 `🔮 Welcome to CosmicPot
 
-Some people come here casually...
+Some people come here out of curiosity...
 
 But some arrive because something inside them  
 has been quietly asking questions.
@@ -123,28 +112,7 @@ If you're here, you're probably the second one.
   }
 
   // =========================
-  // HANDLE OPTION 1 / 2
-  // =========================
-  if (text === "1" && userState[chatId]?.dob) {
-    const dob = userState[chatId].dob;
-    const result = getFullNumerology(dob);
-
-    bot.sendMessage(chatId, generateCoreReading(dob, result), {
-      parse_mode: "Markdown"
-    });
-
-    sendMenu(chatId);
-    return;
-  }
-
-  if (text === "2") {
-    delete userState[chatId];
-    bot.sendMessage(chatId, "📅 Send your new DOB");
-    return;
-  }
-
-  // =========================
-  // HANDLE DOB INPUT (ALL FORMATS)
+  // DOB INPUT
   // =========================
   const dobMatch = text.match(/^(\d{1,2})[-\/ ](\d{1,2})[-\/ ](\d{2,4})$/);
 
@@ -157,17 +125,13 @@ If you're here, you're probably the second one.
 
     userState[chatId] = { dob };
 
-    bot.sendMessage(chatId,
-`📌 I remember your DOB: *${dob}*
+    const result = getFullNumerology(dob);
 
-Do you want to go deeper with this  
-or explore something new?
+    const response = generateReading(dob, result);
 
-1️⃣ Use this DOB  
-2️⃣ Enter new DOB`,
-      { parse_mode: "Markdown" }
-    );
+    bot.sendMessage(chatId, response, { parse_mode: "Markdown" });
 
+    sendMenu(chatId);
     return;
   }
 
@@ -183,20 +147,11 @@ or explore something new?
     const dob = userState[chatId].dob;
     const result = getFullNumerology(dob);
 
-    bot.sendMessage(chatId, generateCoreReading(dob, result), {
+    bot.sendMessage(chatId, generateReading(dob, result), {
       parse_mode: "Markdown"
     });
 
     sendMenu(chatId);
-    return;
-  }
-
-  // =========================
-  // LOVE MATCH
-  // =========================
-  if (text.includes("Love")) {
-    userState[chatId].loveMode = true;
-    bot.sendMessage(chatId, "💞 Send your DOB first");
     return;
   }
 
@@ -212,16 +167,25 @@ or explore something new?
     const result = getFullNumerology(userState[chatId].dob);
 
     bot.sendMessage(chatId,
-`🌌 Your current time energy:
+`🌌 *Your Time Energy*
 
 Year: ${result.personalYear}  
 Month: ${result.personalMonth}  
 Day: ${result.personalDay}
 
-You're in a cycle that's shaping your next move.`
+You are currently in a cycle of transformation.`,
+      { parse_mode: "Markdown" }
     );
 
     sendMenu(chatId);
+    return;
+  }
+
+  // =========================
+  // LOVE MATCH
+  // =========================
+  if (text.includes("Love")) {
+    bot.sendMessage(chatId, "💞 Love matching coming soon...");
     return;
   }
 
